@@ -1,5 +1,5 @@
 # IMY220Project
-![alt text](<125716.png>)
+
 
 ## About
 Ronan Smart 
