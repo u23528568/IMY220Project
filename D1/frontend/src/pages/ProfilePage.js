@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import Header from "../components/Header";
 import EditProfile from "../components/EditProfile";
+import { useNavigate } from "react-router-dom";
 
 function ProfilePage() {
   const [editing, setEditing] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-orange-900 text-white flex flex-col">
