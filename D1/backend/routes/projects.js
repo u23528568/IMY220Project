@@ -35,30 +35,206 @@ const auth = async (req, res, next) => {
   }
 };
 
-// Create project
+// Helper function to generate README content based on template
+const generateReadmeContent = (projectName, description, template, license) => {
+  let content = `# ${projectName}\n\n`;
+  
+  if (description) {
+    content += `${description}\n\n`;
+  }
+
+  content += `## Getting Started\n\n`;
+
+  switch (template) {
+    case 'web':
+      content += `This is a web application project.\n\n### Prerequisites\n- A modern web browser\n- Basic knowledge of HTML, CSS, and JavaScript\n\n### Installation\n1. Clone the repository\n2. Open index.html in your browser\n\n`;
+      break;
+    case 'react':
+      content += `This is a React application.\n\n### Prerequisites\n- Node.js (v14 or higher)\n- npm or yarn\n\n### Installation\n1. Clone the repository\n2. Run \`npm install\`\n3. Run \`npm start\`\n\n`;
+      break;
+    case 'node':
+      content += `This is a Node.js project.\n\n### Prerequisites\n- Node.js (v14 or higher)\n- npm or yarn\n\n### Installation\n1. Clone the repository\n2. Run \`npm install\`\n3. Run \`npm start\`\n\n`;
+      break;
+    case 'python':
+      content += `This is a Python project.\n\n### Prerequisites\n- Python 3.7+\n- pip\n\n### Installation\n1. Clone the repository\n2. Create a virtual environment: \`python -m venv venv\`\n3. Activate the virtual environment\n4. Install dependencies: \`pip install -r requirements.txt\`\n\n`;
+      break;
+    case 'java':
+      content += `This is a Java project.\n\n### Prerequisites\n- Java 11+\n- Maven 3.6+\n\n### Installation\n1. Clone the repository\n2. Run \`mvn clean install\`\n3. Run \`mvn exec:java\`\n\n`;
+      break;
+    default:
+      content += `Welcome to ${projectName}!\n\nThis project is ready for your code.\n\n`;
+  }
+
+  content += `## Usage\n\nDescribe how to use your project here.\n\n## Contributing\n\nContributions are welcome! Please feel free to submit a Pull Request.\n\n`;
+
+  if (license && license !== 'none') {
+    content += `## License\n\nThis project is licensed under the ${license.toUpperCase()} License.\n\n`;
+  }
+
+  return content;
+};
+
+// Helper function to get template files
+const getTemplateFiles = (template, projectName, description, license, userId) => {
+  const files = [];
+  
+  switch (template) {
+    case 'web':
+      files.push({
+        name: 'index.html',
+        path: '/',
+        type: 'file',
+        content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>${projectName}</title>\n    <link rel="stylesheet" href="styles.css">\n</head>\n<body>\n    <h1>Welcome to ${projectName}</h1>\n    <p>${description || 'Your web application starts here!'}</p>\n    <script src="script.js"></script>\n</body>\n</html>`,
+        mimeType: 'text/html',
+        createdBy: userId
+      });
+      files.push({
+        name: 'styles.css',
+        path: '/',
+        type: 'file',
+        content: `/* ${projectName} Styles */\nbody {\n    font-family: Arial, sans-serif;\n    margin: 0;\n    padding: 20px;\n    background-color: #f4f4f4;\n}\n\nh1 {\n    color: #333;\n    text-align: center;\n}\n\np {\n    text-align: center;\n    color: #666;\n}`,
+        mimeType: 'text/css',
+        createdBy: userId
+      });
+      files.push({
+        name: 'script.js',
+        path: '/',
+        type: 'file',
+        content: `// ${projectName} JavaScript\nconsole.log('Welcome to ${projectName}!');\n\n// Add your JavaScript code here`,
+        mimeType: 'application/javascript',
+        createdBy: userId
+      });
+      break;
+    case 'react':
+      files.push({
+        name: 'package.json',
+        path: '/',
+        type: 'file',
+        content: JSON.stringify({
+          name: projectName.toLowerCase().replace(/\s+/g, '-'),
+          version: '1.0.0',
+          private: true,
+          dependencies: {
+            '@testing-library/jest-dom': '^5.16.4',
+            '@testing-library/react': '^13.3.0',
+            '@testing-library/user-event': '^13.5.0',
+            'react': '^18.2.0',
+            'react-dom': '^18.2.0',
+            'react-scripts': '5.0.1',
+            'web-vitals': '^2.1.4'
+          },
+          scripts: {
+            start: 'react-scripts start',
+            build: 'react-scripts build',
+            test: 'react-scripts test',
+            eject: 'react-scripts eject'
+          }
+        }, null, 2),
+        mimeType: 'application/json',
+        createdBy: userId
+      });
+      break;
+    case 'python':
+      files.push({
+        name: 'requirements.txt',
+        path: '/',
+        type: 'file',
+        content: `# ${projectName} Requirements\n# Add your Python dependencies here\n# Example:\n# requests==2.28.1\n# flask==2.2.2`,
+        mimeType: 'text/plain',
+        createdBy: userId
+      });
+      files.push({
+        name: 'main.py',
+        path: '/',
+        type: 'file',
+        content: `#!/usr/bin/env python3\n"""\n${projectName}\n${description || 'Python application'}\n"""\n\ndef main():\n    print("Welcome to ${projectName}!")\n    # Add your code here\n    pass\n\nif __name__ == "__main__":\n    main()`,
+        mimeType: 'text/x-python',
+        createdBy: userId
+      });
+      break;
+  }
+  
+  return files;
+};
+
+// Create project with file system initialization
 router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
-    const { name, description, type, hashtags } = req.body;
+    const { 
+      name, 
+      description, 
+      visibility, 
+      template, 
+      license, 
+      initializeWithReadme, 
+      hashtags 
+    } = req.body;
+
+    // Validate project name uniqueness for the user
+    const existingProject = await Project.findOne({ 
+      name: name, 
+      owner: req.userId 
+    });
     
+    if (existingProject) {
+      return res.status(400).json({ error: 'A project with this name already exists' });
+    }
+
+    // Create the project
     const project = new Project({
       name,
-      description,
-      type: type || 'public',
-      hashtags: hashtags ? hashtags.split(',') : [],
+      description: description || '',
+      visibility: visibility || 'public',
+      template: template || 'blank',
+      license: license || 'none',
+      initializeWithReadme: initializeWithReadme !== false,
+      hashtags: hashtags ? (Array.isArray(hashtags) ? hashtags : hashtags.split(',')) : [],
       owner: req.userId,
       members: [{
         user: req.userId,
         role: 'admin'
       }],
-      image: req.file ? `/uploads/${req.file.filename}` : ''
+      image: req.file ? `/uploads/${req.file.filename}` : '',
+      files: []
     });
+
+    // Initialize with README if requested
+    if (project.initializeWithReadme) {
+      const readmeContent = generateReadmeContent(name, description, template, license);
+      project.files.push({
+        name: 'README.md',
+        path: '/',
+        type: 'file',
+        content: readmeContent,
+        mimeType: 'text/markdown',
+        createdBy: req.userId
+      });
+    }
+
+    // Add template files
+    const templateFiles = getTemplateFiles(template, name, description, license, req.userId);
+    project.files.push(...templateFiles);
+
+    // Add license file if requested
+    if (license && license !== 'none') {
+      // You can add actual license content here based on the license type
+      project.files.push({
+        name: 'LICENSE',
+        path: '/',
+        type: 'file',
+        content: `${license.toUpperCase()} License\n\nCopyright (c) ${new Date().getFullYear()} ${name}\n\n[License content would go here]`,
+        mimeType: 'text/plain',
+        createdBy: req.userId
+      });
+    }
 
     await project.save();
     await project.populate('owner', 'username profile.name');
     
     res.status(201).json(project);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error creating project:', error);
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -82,6 +258,22 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Get user's own projects (only projects where user is the owner)
+// This must come BEFORE the /:id route to avoid route conflicts
+router.get('/my-projects', auth, async (req, res) => {
+  try {
+    const projects = await Project.find({ owner: req.userId })
+      .populate('owner', 'username profile.name')
+      .populate('members.user', 'username profile.name')
+      .sort({ createdAt: -1 });
+
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching user projects:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get project by ID
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -97,6 +289,266 @@ router.get('/:id', auth, async (req, res) => {
     res.json(project);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// File Management Routes
+
+// Upload file to project
+router.post('/:projectId/files', auth, upload.single('file'), async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { path = '/', name, content } = req.body;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has permission to upload files
+    const isMember = project.owner.toString() === req.userId || 
+                     project.members.some(member => member.user.toString() === req.userId);
+    
+    if (!isMember) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    let fileData;
+
+    if (req.file) {
+      // File upload via multipart/form-data
+      const fs = require('fs').promises;
+      const fileContent = await fs.readFile(req.file.path, 'utf8');
+      
+      fileData = {
+        name: req.file.originalname,
+        path: path,
+        type: 'file',
+        content: fileContent,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        createdBy: req.userId
+      };
+
+      // Clean up uploaded file
+      await fs.unlink(req.file.path);
+    } else if (name && content !== undefined) {
+      // Text content upload via JSON
+      fileData = {
+        name,
+        path,
+        type: 'file',
+        content,
+        mimeType: 'text/plain',
+        size: Buffer.byteLength(content, 'utf8'),
+        createdBy: req.userId
+      };
+    } else {
+      return res.status(400).json({ error: 'No file or content provided' });
+    }
+
+    // Check if file already exists
+    const existingFile = project.files.find(f => 
+      f.name === fileData.name && f.path === fileData.path && f.type === 'file'
+    );
+
+    if (existingFile) {
+      // Update existing file
+      Object.assign(existingFile, {
+        ...fileData,
+        updatedAt: new Date()
+      });
+    } else {
+      // Add new file
+      project.files.push(fileData);
+    }
+
+    await project.save();
+    
+    res.status(201).json({
+      message: 'File uploaded successfully',
+      file: fileData
+    });
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).json({ error: 'Failed to upload file' });
+  }
+});
+
+// Create folder in project
+router.post('/:projectId/folders', auth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { name, path = '/' } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Folder name is required' });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has permission
+    const isMember = project.owner.toString() === req.userId || 
+                     project.members.some(member => member.user.toString() === req.userId);
+    
+    if (!isMember) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    // Check if folder already exists
+    const existingFolder = project.files.find(f => 
+      f.name === name && f.path === path && f.type === 'folder'
+    );
+
+    if (existingFolder) {
+      return res.status(400).json({ error: 'Folder already exists' });
+    }
+
+    const folderData = {
+      name,
+      path,
+      type: 'folder',
+      content: '',
+      mimeType: 'inode/directory',
+      size: 0,
+      createdBy: req.userId
+    };
+
+    project.files.push(folderData);
+    await project.save();
+    
+    res.status(201).json({
+      message: 'Folder created successfully',
+      folder: folderData
+    });
+  } catch (error) {
+    console.error('Error creating folder:', error);
+    res.status(500).json({ error: 'Failed to create folder' });
+  }
+});
+
+// Update file content
+router.put('/:projectId/files/:fileId', auth, async (req, res) => {
+  try {
+    const { projectId, fileId } = req.params;
+    const { content, name } = req.body;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has permission
+    const isMember = project.owner.toString() === req.userId || 
+                     project.members.some(member => member.user.toString() === req.userId);
+    
+    if (!isMember) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    const file = project.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    if (file.type !== 'file') {
+      return res.status(400).json({ error: 'Cannot update folder content' });
+    }
+
+    // Update file
+    if (content !== undefined) {
+      file.content = content;
+      file.size = Buffer.byteLength(content, 'utf8');
+    }
+    if (name) {
+      file.name = name;
+    }
+    file.updatedAt = new Date();
+
+    await project.save();
+    
+    res.json({
+      message: 'File updated successfully',
+      file
+    });
+  } catch (error) {
+    console.error('Error updating file:', error);
+    res.status(500).json({ error: 'Failed to update file' });
+  }
+});
+
+// Delete file or folder
+router.delete('/:projectId/files/:fileId', auth, async (req, res) => {
+  try {
+    const { projectId, fileId } = req.params;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has permission
+    const isMember = project.owner.toString() === req.userId || 
+                     project.members.some(member => member.user.toString() === req.userId);
+    
+    if (!isMember) {
+      return res.status(403).json({ error: 'Permission denied' });
+    }
+
+    const file = project.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    // If it's a folder, delete all files in it recursively
+    if (file.type === 'folder') {
+      const folderPath = file.path === '/' ? `/${file.name}` : `${file.path}/${file.name}`;
+      project.files = project.files.filter(f => !f.path.startsWith(folderPath) && f._id.toString() !== fileId);
+    }
+
+    // Remove the file/folder
+    project.files.pull(fileId);
+    await project.save();
+    
+    res.json({ message: 'File deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting file:', error);
+    res.status(500).json({ error: 'Failed to delete file' });
+  }
+});
+
+// Get file content
+router.get('/:projectId/files/:fileId', auth, async (req, res) => {
+  try {
+    const { projectId, fileId } = req.params;
+    
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has permission (allow public projects to be viewed by anyone)
+    if (project.visibility === 'private') {
+      const isMember = project.owner.toString() === req.userId || 
+                       project.members.some(member => member.user.toString() === req.userId);
+      
+      if (!isMember) {
+        return res.status(403).json({ error: 'Permission denied' });
+      }
+    }
+
+    const file = project.files.id(fileId);
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.json({ file });
+  } catch (error) {
+    console.error('Error getting file:', error);
+    res.status(500).json({ error: 'Failed to get file' });
   }
 });
 

@@ -37,9 +37,11 @@ module.exports = {
     extensions: [".js", ".jsx"],
   },
   devServer: {
-    static: {
-      directory: path.resolve(__dirname, "public"),
-    },
+    static: [
+      {
+        directory: path.resolve(__dirname, "frontend/public"),
+      },
+    ],
     port: 3000,
     hot: true,
     open: true,

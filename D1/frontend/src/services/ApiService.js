@@ -2,6 +2,7 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
 class ApiService {
+  static BASE_URL = API_BASE_URL;
   // Helper method to make API calls
   static async makeRequest(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -74,6 +75,44 @@ class ApiService {
     });
   }
 
+  static async uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    const token = localStorage.getItem('authToken');
+    
+    console.log('Upload attempt:', {
+      url: `${this.BASE_URL}/users/profile/upload-avatar`,
+      hasToken: !!token,
+      fileSize: file.size,
+      fileType: file.type
+    });
+    
+    try {
+      const response = await fetch(`${this.BASE_URL}/users/profile/upload-avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      console.log('Upload response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Upload response data:', data);
+      
+      if (response.ok) {
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error || 'Upload failed' };
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      return { success: false, error: 'Network error during upload' };
+    }
+  }
+
   static async getAllUsers() {
     return this.makeRequest('/users/');
   }
@@ -100,6 +139,18 @@ class ApiService {
     return this.makeRequest('/projects/');
   }
 
+  static async getUserProjects() {
+    // Get only projects where the user is the owner
+    return this.makeRequest('/projects/my-projects');
+  }
+
+  static async createProject(projectData) {
+    return this.makeRequest('/projects/', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+  }
+
   static async getProject(projectId) {
     return this.makeRequest(`/projects/${projectId}`);
   }
@@ -114,6 +165,68 @@ class ApiService {
 
   static async getProjectCheckins(projectId) {
     return this.makeRequest(`/checkins/project/${projectId}`);
+  }
+
+  // File management methods
+  static async uploadFile(projectId, file, path = '/') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', path);
+
+    const token = localStorage.getItem('authToken');
+    const config = {
+      method: 'POST',
+      body: formData,
+      headers: {}
+    };
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    try {
+      const response = await fetch(`${this.BASE_URL}/projects/${projectId}/files`, config);
+      const data = await response.json();
+
+      if (response.ok) {
+        return { success: true, data };
+      } else {
+        return { success: false, error: data.error || 'Upload failed' };
+      }
+    } catch (error) {
+      return { success: false, error: 'Network error during upload' };
+    }
+  }
+
+  static async createFile(projectId, name, content = '', path = '/') {
+    return this.makeRequest(`/projects/${projectId}/files`, {
+      method: 'POST',
+      body: JSON.stringify({ name, content, path }),
+    });
+  }
+
+  static async createFolder(projectId, name, path = '/') {
+    return this.makeRequest(`/projects/${projectId}/folders`, {
+      method: 'POST',
+      body: JSON.stringify({ name, path }),
+    });
+  }
+
+  static async updateFile(projectId, fileId, updates) {
+    return this.makeRequest(`/projects/${projectId}/files/${fileId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  static async deleteFile(projectId, fileId) {
+    return this.makeRequest(`/projects/${projectId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  static async getFileContent(projectId, fileId) {
+    return this.makeRequest(`/projects/${projectId}/files/${fileId}`);
   }
 
   // Helper methods

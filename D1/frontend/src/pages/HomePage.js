@@ -18,20 +18,21 @@ export default function HomePage() {
       try {
         setLoading(true);
         
-        // Fetch all projects for the feed
-        const projectsResult = await ApiService.getAllProjects();
-        if (projectsResult.success) {
-          setProjects(projectsResult.data);
-          
-          // Filter user's own projects for the sidebar
-          const userOwnProjects = projectsResult.data.filter(
-            project => project.owner?._id === user?.id
-          );
-          setUserProjects(userOwnProjects);
+        // Fetch all projects for the global feed
+        const allProjectsResult = await ApiService.getAllProjects();
+        if (allProjectsResult.success) {
+          setProjects(allProjectsResult.data);
+        }
+        
+        // Fetch user's own projects (repositories) for the sidebar
+        const userProjectsResult = await ApiService.getUserProjects();
+        if (userProjectsResult.success) {
+          setUserProjects(userProjectsResult.data);
         } else {
-          setError("Failed to load projects");
+          setError("Failed to load your repositories");
         }
       } catch (err) {
+        console.error("Error fetching data:", err);
         setError("Failed to load data");
       } finally {
         setLoading(false);
@@ -41,9 +42,7 @@ export default function HomePage() {
     fetchData();
   }, [user?.id]);
 
-  const feedData = feedType === "local" ? 
-    projects.filter(project => project.owner?._id === user?.id) : 
-    projects;
+  const feedData = feedType === "local" ? userProjects : projects;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-orange-900 text-white flex flex-col">
@@ -85,11 +84,12 @@ export default function HomePage() {
             ) : (
               <div className="text-gray-400 text-sm">
                 <p>No repositories yet.</p>
+                <p className="text-xs text-gray-500 mt-1">Create your first project to get started</p>
                 <button
                   onClick={() => navigate("/project")}
-                  className="mt-2 text-orange-400 hover:text-orange-300"
+                  className="mt-2 text-orange-400 hover:text-orange-300 text-xs font-medium"
                 >
-                  Create your first project
+                  + Create repository
                 </button>
               </div>
             )}
@@ -178,9 +178,21 @@ export default function HomePage() {
                       <span>By {project.owner?.profile?.name || project.owner?.username || "Unknown"}</span>
                       <span>{new Date(project.createdAt).toLocaleDateString()}</span>
                     </div>
-                    {project.hashtags && (
-                      <div className="mt-2">
-                        <span className="text-xs text-orange-300">{project.hashtags}</span>
+                    {project.hashtags && project.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {project.hashtags.slice(0, 3).map((tag, index) => (
+                          <span 
+                            key={index} 
+                            className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        {project.hashtags.length > 3 && (
+                          <span className="text-gray-400 text-xs">
+                            +{project.hashtags.length - 3}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

@@ -41,7 +41,8 @@ router.post('/signup', async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        profile: user.profile
+        profile: user.profile,
+        createdAt: user.createdAt
       }
     });
   } catch (error) {
@@ -76,7 +77,8 @@ router.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        profile: user.profile
+        profile: user.profile,
+        createdAt: user.createdAt
       }
     });
   } catch (error) {

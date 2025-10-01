@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
+import Files from "../components/Files";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
 
@@ -28,7 +29,7 @@ export default function ProjectViewPage() {
         setLoading(true);
         setError(null);
         
-        const result = await ApiService.getProjectById(projectId);
+        const result = await ApiService.getProject(projectId);
         if (result.success) {
           setProject(result.data);
         } else {
@@ -127,7 +128,7 @@ export default function ProjectViewPage() {
             <h2 className="font-semibold mb-2">Project Owner</h2>
             <div className="flex items-center space-x-2">
               <img
-                src={project.owner?.profilePicture || "/assets/images/Logo.png"}
+                src={project.owner?.profile?.avatar || "/assets/images/1000_F_500213410_oXAyKG24tasVFjl4OgCLkYkglvypBMlq.jpg"}
                 alt="Owner"
                 className="w-8 h-8 rounded-full border border-orange-500"
               />
@@ -140,10 +141,19 @@ export default function ProjectViewPage() {
             </div>
           </div>
 
-          {project.hashtags && (
+          {project.hashtags && project.hashtags.length > 0 && (
             <div className="mb-6">
               <h2 className="font-semibold mb-2">Tags</h2>
-              <p className="text-orange-300 text-sm">{project.hashtags}</p>
+              <div className="flex flex-wrap gap-2">
+                {project.hashtags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className="inline-block bg-orange-600 hover:bg-orange-700 text-white text-sm px-3 py-1 rounded-full cursor-pointer transition-colors"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -200,15 +210,10 @@ export default function ProjectViewPage() {
               </div>
             </div>
 
-            {/* File Management Placeholder */}
+            {/* File Management */}
             <div className="bg-gray-700 p-4 rounded">
               <h3 className="font-semibold mb-3">Files & Documents</h3>
-              <div className="text-center py-8 text-gray-400">
-                <p className="mb-4">📁 File management coming soon!</p>
-                <p className="text-sm">
-                  Upload, organize, and manage your project files directly in the browser.
-                </p>
-              </div>
+              <Files project={project} />
             </div>
 
             {/* Collaboration Placeholder */}

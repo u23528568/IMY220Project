@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
+import CreateProject from "../components/CreateProject";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
 
@@ -10,6 +11,7 @@ export default function ProjectPage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -17,7 +19,7 @@ export default function ProjectPage() {
         setLoading(true);
         setError(null);
         
-        const result = await ApiService.getAllProjects();
+        const result = await ApiService.getUserProjects();
         if (result.success) {
           setProjects(result.data);
         } else {
@@ -40,10 +42,10 @@ export default function ProjectPage() {
       
       <main className="flex-grow container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">All Projects</h1>
+          <h1 className="text-2xl font-bold">My Projects</h1>
           <button 
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
-            onClick={() => alert("Project creation form coming soon! Currently you can view and manage existing projects.")}
+            onClick={() => setShowCreateProject(true)}
           >
             Create Project
           </button>
@@ -85,8 +87,17 @@ export default function ProjectPage() {
                   {project.type && (
                     <p className="text-orange-300 text-xs">Type: {project.type}</p>
                   )}
-                  {project.hashtags && (
-                    <p className="text-orange-300 text-xs">{project.hashtags}</p>
+                  {project.hashtags && project.hashtags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {project.hashtags.map((tag, index) => (
+                        <span 
+                          key={index} 
+                          className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -100,7 +111,7 @@ export default function ProjectPage() {
             </p>
             <button 
               className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
-              onClick={() => alert("Project creation form coming soon! You can test the existing functionality with sample projects.")}
+              onClick={() => setShowCreateProject(true)}
             >
               Create First Project
             </button>
@@ -110,12 +121,33 @@ export default function ProjectPage() {
         {/* Quick create button */}
         <button 
           className="fixed bottom-6 right-6 bg-orange-500 hover:bg-orange-600 text-white font-bold p-4 rounded-full shadow-lg transition-colors"
-          onClick={() => alert("Project creation form coming soon!")}
+          onClick={() => setShowCreateProject(true)}
           title="Create New Project"
         >
           +
         </button>
       </main>
+
+      {/* Create Project Modal */}
+      {showCreateProject && (
+        <CreateProject 
+          onClose={() => {
+            setShowCreateProject(false);
+            // Refresh projects list after creation
+            const fetchProjects = async () => {
+              try {
+                const result = await ApiService.getUserProjects();
+                if (result.success) {
+                  setProjects(result.data);
+                }
+              } catch (err) {
+                console.error('Error refreshing projects:', err);
+              }
+            };
+            fetchProjects();
+          }} 
+        />
+      )}
     </div>
   );
 }

@@ -22,9 +22,9 @@ export default function Header() {
 		<header className="flex justify-between items-center px-6 py-3 bg-gray-800 shadow-md">
 			<div className="flex items-center space-x-2">
 				<img 
-					src="/assets/images/Logo.png" 
+					src="/assets/images/Logo.jpg" 
 					alt="Repofox Logo" 
-					className="w-6 h-6 cursor-pointer" 
+					className="w-6 h-6 cursor-pointer  rounded-full" 
 					onClick={() => navigate("/home")}
 				/>
 				<span 
@@ -53,9 +53,9 @@ export default function Header() {
 						onClick={() => setShowDropdown(!showDropdown)}
 					>
 						<img
-							src="/assets/images/profilepic.jpg"
+							src={user?.profile?.avatar || "/assets/images/1000_F_500213410_oXAyKG24tasVFjl4OgCLkYkglvypBMlq.jpg"}
 							alt="User Avatar"
-							className="w-8 h-8 rounded-full"
+							className="w-8 h-8 rounded-full object-cover border-0"
 						/>
 						<span className="text-white text-sm">
 							{user?.profile?.name || user?.username || 'User'}

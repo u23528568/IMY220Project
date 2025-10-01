@@ -22,9 +22,10 @@ function ProfilePage() {
         setError(null);
         
         // Fetch user's projects
-        const projectsResult = await ApiService.getUserProjects(user.id);
+        const projectsResult = await ApiService.getUserProjects();
         if (projectsResult.success) {
-          setUserProjects(projectsResult.data);
+          // Show only the 3 most recent projects on profile page
+          setUserProjects(projectsResult.data.slice(0, 3));
         } else {
           setError("Failed to load projects");
         }
@@ -48,9 +49,9 @@ function ProfilePage() {
           {!editing ? (
             <div className="bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col items-center">
               <img
-                src={user?.profilePicture || "/assets/images/Logo.png"}
+                src={user?.profile?.avatar}
                 alt="User Avatar"
-                className="w-32 h-32 rounded-full border-4 border-orange-500 object-cover"
+                className="w-32 h-32 rounded-full border-0 object-cover"
               />
               <h1 className="text-2xl font-bold mt-4 text-orange-400">
                 {user?.username || "Loading..."}
@@ -74,6 +75,14 @@ function ProfilePage() {
                   </p>
                 </div>
               )}
+              {user?.createdAt && (
+                <div className="mt-4 text-left w-full">
+                  <h2 className="font-semibold text-lg">Joined:</h2>
+                  <p className="text-gray-300 text-sm mt-2">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
               <button className="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded w-full" onClick={() => setEditing(true)}>
                 Edit Profile
               </button>
@@ -93,7 +102,7 @@ function ProfilePage() {
                 onClick={() => navigate("/project")}
                 className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-sm"
               >
-                Create New Project
+                View My Projects
               </button>
             </div>
             
@@ -124,8 +133,22 @@ function ProfilePage() {
                         <p className="text-gray-300 text-sm mt-1">
                           {project.description || "No description"}
                         </p>
-                        {project.hashtags && (
-                          <p className="text-orange-300 text-xs mt-2">{project.hashtags}</p>
+                        {project.hashtags && project.hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {project.hashtags.slice(0, 3).map((tag, index) => (
+                              <span 
+                                key={index} 
+                                className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                            {project.hashtags.length > 3 && (
+                              <span className="text-gray-400 text-xs">
+                                +{project.hashtags.length - 3} more
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div className="text-right">

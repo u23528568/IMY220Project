@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 
 const router = express.Router();
@@ -118,6 +120,80 @@ router.post('/friend-request/:userId', auth, async (req, res) => {
     await targetUser.save();
     res.json({ message: 'Friend request sent' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Configure multer to store files in memory for Base64 conversion
+const storage = multer.memoryStorage();
+
+const fileFilter = (req, file, cb) => {
+  // Accept images only
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: fileFilter
+});
+
+// Upload profile picture (store as Base64 in database)
+router.post('/profile/upload-avatar', auth, upload.single('avatar'), async (req, res) => {
+  console.log('Upload route hit:', {
+    userId: req.userId,
+    hasFile: !!req.file,
+    fileInfo: req.file ? {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : 'No file'
+  });
+  
+  try {
+    if (!req.file) {
+      console.log('No file in request');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Convert file buffer to Base64
+    const base64Data = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
+    
+    console.log('Converting to base64, size:', base64Data.length);
+    
+    // Create data URL for direct use in img src
+    const avatarDataUrl = `data:${mimeType};base64,${base64Data}`;
+    
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { 
+        $set: { 
+          'profile.avatar': avatarDataUrl,
+          'profile.avatarData': base64Data,
+          'profile.avatarMimeType': mimeType
+        } 
+      },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      message: 'Profile picture updated successfully',
+      avatar: avatarDataUrl,
+      user: user
+    });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
     res.status(500).json({ error: error.message });
   }
 });

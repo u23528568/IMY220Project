@@ -33,6 +33,14 @@ const userSchema = new mongoose.Schema({
     avatar: {
       type: String,
       default: ''
+    },
+    avatarData: {
+      type: String,
+      default: ''
+    },
+    avatarMimeType: {
+      type: String,
+      default: ''
     }
   },
   friends: [{

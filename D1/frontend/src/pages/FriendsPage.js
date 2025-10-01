@@ -75,7 +75,7 @@ export default function FriendsPage() {
                 >
                   <div className="flex items-center space-x-3">
                     <img
-                      src={otherUser.profilePicture || "/assets/images/Logo.png"}
+                      src={otherUser.profile?.avatar || "/assets/images/1000_F_500213410_oXAyKG24tasVFjl4OgCLkYkglvypBMlq.jpg"}
                       alt={otherUser.profile?.name || otherUser.username}
                       className="w-12 h-12 rounded-full object-cover border-2 border-orange-500"
                     />
