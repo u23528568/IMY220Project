@@ -1,14 +1,23 @@
 version: '3.8'
-
 services:
-  repofox-app:
+  app:
     build: .
     ports:
-      - "3000:3000"
+      - "5000:5000"
     environment:
-      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/repofox
+      - JWT_SECRET=your-jwt-secret
+    depends_on:
+      - mongodb
     volumes:
-      - .:/app
-      - /app/node_modules
-    stdin_open: true
-    tty: true
+      - ./uploads:/app/uploads
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

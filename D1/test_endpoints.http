@@ -1,0 +1,107 @@
+### Variables
+@baseUrl = http://localhost:5000/api
+@token = 
+
+### 1. Sign Up User
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "email": "test@example.com",
+  "password": "password123",
+  "profile": {
+    "name": "Test User",
+    "bio": "This is a test user account"
+  }
+}
+
+### 2. Login User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 3. Get User Profile (Need token from login)
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+
+### 4. Update User Profile
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "profile": {
+    "name": "Updated User Name",
+    "bio": "Updated bio description"
+  }
+}
+
+### 5. Get All Users
+GET {{baseUrl}}/users/
+Authorization: Bearer {{token}}
+
+### 6. Search Users
+GET {{baseUrl}}/users/search?q=test
+Authorization: Bearer {{token}}
+
+### 7. Create Project
+POST {{baseUrl}}/projects/
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "My Test Project",
+  "description": "A sample project for testing the API",
+  "type": "Web Development",
+  "hashtags": "#react,#nodejs,#mongodb"
+}
+
+### 8. Get All Projects
+GET {{baseUrl}}/projects/
+Authorization: Bearer {{token}}
+
+### 9. Get Single Project (Replace PROJECT_ID with actual ID)
+GET {{baseUrl}}/projects/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### 10. Create Checkin (Replace PROJECT_ID with actual project ID)
+POST {{baseUrl}}/checkins/PROJECT_ID/checkin
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "message": "Added new features and fixed critical bugs. Updated UI components and improved performance."
+}
+
+### 11. Get Project Checkins (Replace PROJECT_ID with actual project ID)
+GET {{baseUrl}}/checkins/project/PROJECT_ID
+Authorization: Bearer {{token}}
+
+### Test with second user
+### Sign Up Second User
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "username": "alice_dev",
+  "email": "alice@example.com",
+  "password": "alice123",
+  "profile": {
+    "name": "Alice Developer",
+    "bio": "Experienced full-stack developer"
+  }
+}
+
+### Login Second User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "alice123"
+}

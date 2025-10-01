@@ -1,29 +1,25 @@
-# Use Node.js as base image
-FROM node:18-alpine
-
-# Set working directory
-WORKDIR /app
-
-# Copy root package files first
-COPY package*.json ./
-
-# Install root dependencies
-RUN npm install
-
-# Copy the entire project
-COPY . .
-
-# Change to frontend directory
+# Frontend build stage
+FROM node:18-alpine as frontend-build
 WORKDIR /app/frontend
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Check if frontend has its own package.json and install if it exists
-RUN if [ -f package.json ]; then npm install; fi
-
-# Go back to root directory
+# Backend stage
+FROM node:20-alpine
 WORKDIR /app
 
-# Expose port 3000
-EXPOSE 3000
+# Copy backend
+COPY backend/package*.json ./
+RUN npm install
+COPY backend/ ./
 
-# Start the development server from root (since your package.json is there)
+# Copy frontend build
+COPY --from=frontend-build /app/frontend/dist ./public
+
+RUN mkdir -p uploads
+
+EXPOSE 5000
+
 CMD ["npm", "start"]

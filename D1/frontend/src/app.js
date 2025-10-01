@@ -1,5 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import SplashPage from "./pages/SplashPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
@@ -12,17 +14,50 @@ import AboutPage from "./pages/AboutPage";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<SplashPage />} />
-      <Route path="/home" element={<HomePage />} />
-      <Route path="/profile" element={<ProfilePage />} />
-      <Route path="/friends" element={<FriendsPage />} />
-      <Route path="/project" element={<ProjectPage />} />
-      <Route path="/projectview" element={<ProjectViewPage />} />
-      <Route path="/teams" element={<TeamsPage />} />
-      <Route path="/team1" element={<Team1Page />} />
-      <Route path="/about" element={<AboutPage />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<SplashPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        
+        {/* Protected routes - require authentication */}
+        <Route path="/home" element={
+          <ProtectedRoute>
+            <HomePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/friends" element={
+          <ProtectedRoute>
+            <FriendsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/project" element={
+          <ProtectedRoute>
+            <ProjectPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/projectview" element={
+          <ProtectedRoute>
+            <ProjectViewPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/teams" element={
+          <ProtectedRoute>
+            <TeamsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/team1" element={
+          <ProtectedRoute>
+            <Team1Page />
+          </ProtectedRoute>
+        } />
+      </Routes>
+    </AuthProvider>
   );
 }
 
