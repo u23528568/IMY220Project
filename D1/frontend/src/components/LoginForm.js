@@ -47,10 +47,15 @@ export default function LoginForm() {
       return;
     }
 
+    console.log('LoginForm: Starting login with form data:', formData);
     const result = await login(formData);
+    console.log('LoginForm: Received result from AuthContext:', result);
     
     if (result.success) {
+      console.log('LoginForm: Login successful, navigating to /home');
       navigate("/home");
+    } else {
+      console.log('LoginForm: Login failed, error will be shown by AuthContext');
     }
     // Error handling is done automatically by the AuthContext
   };

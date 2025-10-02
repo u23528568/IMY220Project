@@ -1,14 +1,70 @@
+# Dependencies (will be installed in container)
 node_modules
-npm-debug.log
-Dockerfile
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (will be built in container)
+dist
+build
+frontend/public/bundle.js
+frontend/public/bundle.js.map
+
+# Docker files
+Dockerfile*
+docker-compose*
 .dockerignore
+
+# Git
 .git
 .gitignore
+
+# Documentation
 README.md
-.env
+*.pdf
+
+# Environment files
+.env*
+
+# Testing and coverage
 .nyc_output
 coverage
-.nyc_output
 .coverage
+test/
+tests/
+**/*.test.js
+**/*.spec.js
+
+# Cache and temporary files
 .cache
-dist
+.tmp
+*.tmp
+*.temp
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Demo and development files
+*-demo.js
+backend/mongodb-native-demo.js
+
+# Upload directories (runtime data)
+backend/uploads/
+uploads/

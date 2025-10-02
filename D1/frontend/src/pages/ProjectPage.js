@@ -2,16 +2,21 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import CreateProject from "../components/CreateProject";
+import SearchInput from "../components/SearchInput";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
+import { detectLanguagesFromFiles, getLanguageColor } from "../utils/languageDetection";
+import { formatDateToCAT } from "../utils/timezone";
 
 export default function ProjectPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -22,6 +27,7 @@ export default function ProjectPage() {
         const result = await ApiService.getUserProjects();
         if (result.success) {
           setProjects(result.data);
+          setFilteredProjects(result.data);
         } else {
           setError("Failed to load projects");
         }
@@ -36,19 +42,44 @@ export default function ProjectPage() {
     fetchProjects();
   }, []);
 
+  // Filter projects based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredProjects(projects);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = projects.filter(project => 
+        project.name.toLowerCase().includes(query) ||
+        (project.description && project.description.toLowerCase().includes(query)) ||
+        (project.tags && project.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+      setFilteredProjects(filtered);
+    }
+  }, [searchQuery, projects]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-orange-900 text-white flex flex-col">
       <Header />
       
       <main className="flex-grow container mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">My Projects</h1>
+          <h1 className="text-2xl font-bold font-display">My Projects</h1>
           <button 
             className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
             onClick={() => setShowCreateProject(true)}
           >
             Create Project
           </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="mb-6">
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search your projects..."
+            className="w-full max-w-md"
+          />
         </div>
         
         {loading ? (
@@ -65,9 +96,9 @@ export default function ProjectPage() {
           <div className="bg-red-900 border border-red-600 text-red-200 p-4 rounded">
             {error}
           </div>
-        ) : projects.length > 0 ? (
+        ) : filteredProjects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {filteredProjects.map((project) => (
               <div 
                 key={project._id}
                 className="bg-gray-800 rounded-lg shadow-lg p-6 cursor-pointer hover:bg-gray-700 transition-colors"
@@ -82,39 +113,53 @@ export default function ProjectPage() {
                     Owner: {project.owner?.profile?.name || project.owner?.username || "Unknown"}
                   </p>
                   <p className="text-gray-400 text-sm">
-                    Created: {new Date(project.createdAt).toLocaleDateString()}
+                    Created: {formatDateToCAT(project.createdAt)}
                   </p>
                   {project.type && (
                     <p className="text-orange-300 text-xs">Type: {project.type}</p>
                   )}
-                  {project.hashtags && project.hashtags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {project.hashtags.map((tag, index) => (
-                        <span 
-                          key={index} 
-                          className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    const languages = detectLanguagesFromFiles(project.files || []);
+                    return languages.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {languages.map((language, index) => (
+                          <span 
+                            key={index} 
+                            className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                          >
+                            {language}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-400 mb-4">No projects found</p>
-            <p className="text-gray-500 text-sm mb-6">
-              Be the first to create a project!
-            </p>
-            <button 
-              className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
-              onClick={() => setShowCreateProject(true)}
-            >
-              Create First Project
-            </button>
+            {searchQuery ? (
+              <div>
+                <p className="text-gray-400 mb-4">No projects found for "{searchQuery}"</p>
+                <p className="text-gray-500 text-sm">
+                  Try adjusting your search terms or create a new project
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-gray-400 mb-4">No projects found</p>
+                <p className="text-gray-500 text-sm mb-6">
+                  Be the first to create a project!
+                </p>
+                <button 
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
+                  onClick={() => setShowCreateProject(true)}
+                >
+                  Create First Project
+                </button>
+              </div>
+            )}
           </div>
         )}
 

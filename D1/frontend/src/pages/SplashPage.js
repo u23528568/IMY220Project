@@ -11,15 +11,15 @@ const SplashPage = () => {
       {/* Header */}
       <header className="flex items-center bg-[#222222] w-screen py-2 px-4 fixed top-0 z-10">
         <img src="/assets/images/Logo.jpg" alt="Repofox Logo" className="w-12 h-12 mr-2 rounded-full" />
-        <h1 className="text-2xl font-bold">
-          <span className="text-orange-500">Repo</span>fox
+        <h1 className="text-3xl font-display font-bold tracking-tight">
+          <span className="text-orange-500">Repofox</span><span className="text-white">Hub</span>
         </h1>
       </header>
 
       {/* Tagline */}
       <section className="text-center mt-20">
-        <h2 className="text-lg font-bold text-orange-400">REPOFOX</h2>
-        <p className="mt-2 text-gray-200 max-w-md mx-auto">
+        <h2 className="text-2xl font-display font-bold text-orange-400 tracking-tight mb-3">REPOFOX</h2>
+        <p className="mt-2 text-gray-200 max-w-md mx-auto font-medium leading-relaxed">
           Build together. Learn faster. Launch further. <br />
           Showcase your work, exchange ideas, and discover new opportunities with developers worldwide.
         </p>

@@ -35,6 +35,55 @@ const auth = async (req, res, next) => {
   }
 };
 
+// Helper function to track changes during checkout session
+const trackSessionChange = async (project, operation, fileName) => {
+  try {
+    console.log(`Tracking session change - Operation: ${operation}, FileName: ${fileName}`);
+    
+    if (!fileName || !project.sessionChanges) {
+      console.log('No fileName or sessionChanges not initialized');
+      return;
+    }
+
+    // Determine if it's a folder based on filename ending with '/'
+    const isFolder = fileName.endsWith('/');
+    const displayName = isFolder ? fileName.slice(0, -1) : fileName; // Remove trailing slash for display
+    
+    // Initialize sessionChanges if not present
+    if (!project.sessionChanges) {
+      project.sessionChanges = { added: [], modified: [], deleted: [] };
+    }
+
+    // Remove from other arrays first to avoid duplicates
+    project.sessionChanges.added = project.sessionChanges.added.filter(f => f !== displayName);
+    project.sessionChanges.modified = project.sessionChanges.modified.filter(f => f !== displayName);
+    project.sessionChanges.deleted = project.sessionChanges.deleted.filter(f => f !== displayName);
+    
+    // Add to appropriate array based on operation
+    switch (operation) {
+      case 'add':
+        if (!project.sessionChanges.added.includes(displayName)) {
+          project.sessionChanges.added.push(displayName);
+        }
+        break;
+      case 'update':
+        if (!project.sessionChanges.modified.includes(displayName)) {
+          project.sessionChanges.modified.push(displayName);
+        }
+        break;
+      case 'delete':
+        if (!project.sessionChanges.deleted.includes(displayName)) {
+          project.sessionChanges.deleted.push(displayName);
+        }
+        break;
+    }
+    
+    console.log('Updated session changes:', project.sessionChanges);
+  } catch (error) {
+    console.error('Error tracking session change:', error);
+  }
+};
+
 // Helper function to generate README content based on template
 const generateReadmeContent = (projectName, description, template, license) => {
   let content = `# ${projectName}\n\n`;
@@ -229,7 +278,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     }
 
     await project.save();
-    await project.populate('owner', 'username profile.name');
+    await project.populate('owner', 'username profile.name profile.avatar');
     
     res.status(201).json(project);
   } catch (error) {
@@ -245,11 +294,11 @@ router.get('/', auth, async (req, res) => {
       $or: [
         { owner: req.userId },
         { 'members.user': req.userId },
-        { type: 'public' }
+        { visibility: 'public' }
       ]
     })
-    .populate('owner', 'username profile.name')
-    .populate('members.user', 'username profile.name')
+    .populate('owner', 'username profile.name profile.avatar')
+    .populate('members.user', 'username profile.name profile.avatar')
     .sort({ createdAt: -1 });
 
     res.json(projects);
@@ -258,13 +307,48 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Search projects
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim() === '') {
+      return res.json([]);
+    }
+
+    const searchRegex = new RegExp(q.trim(), 'i');
+    
+    const projects = await Project.find({
+      $and: [
+        { owner: req.userId }, // Only return projects owned by the current user
+        {
+          $or: [
+            { name: searchRegex },
+            { description: searchRegex },
+            { tags: { $in: [searchRegex] } }
+          ]
+        }
+      ]
+    })
+    .populate('owner', 'username profile.name profile.avatar')
+    .populate('members.user', 'username profile.name profile.avatar')
+    .sort({ createdAt: -1 })
+    .limit(20);
+
+    res.json(projects);
+  } catch (error) {
+    console.error('Project search error:', error);
+    res.status(500).json({ error: 'Failed to search projects' });
+  }
+});
+
 // Get user's own projects (only projects where user is the owner)
 // This must come BEFORE the /:id route to avoid route conflicts
 router.get('/my-projects', auth, async (req, res) => {
   try {
     const projects = await Project.find({ owner: req.userId })
-      .populate('owner', 'username profile.name')
-      .populate('members.user', 'username profile.name')
+      .populate('owner', 'username profile.name profile.avatar')
+      .populate('members.user', 'username profile.name profile.avatar')
       .sort({ createdAt: -1 });
 
     res.json(projects);
@@ -278,15 +362,57 @@ router.get('/my-projects', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id)
-      .populate('owner', 'username profile.name')
-      .populate('members.user', 'username profile.name')
-      .populate('checkedOutBy', 'username profile.name');
+      .populate('owner', 'username profile.name profile.avatar')
+      .populate('members.user', 'username profile.name profile.avatar')
+      .populate('checkedOutBy', 'username profile.name profile.avatar');
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
     res.json(project);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update project
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, visibility, license } = req.body;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user is the owner
+    if (project.owner.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Only the project owner can edit this project' });
+    }
+
+    // Validate required fields
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+
+    // Update project fields
+    project.name = name.trim();
+    project.description = description?.trim() || '';
+    project.visibility = visibility || 'public';
+    project.license = license || 'none';
+    project.updatedAt = new Date();
+
+    await project.save();
+
+    // Return updated project with populated fields
+    const updatedProject = await Project.findById(id)
+      .populate('owner', 'username profile.name profile.avatar')
+      .populate('members.user', 'username profile.name profile.avatar')
+      .populate('checkedOutBy', 'username profile.name profile.avatar');
+
+    res.json(updatedProject);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -363,6 +489,12 @@ router.post('/:projectId/files', auth, upload.single('file'), async (req, res) =
       project.files.push(fileData);
     }
 
+    // Track session changes if user is checked out
+    if (project.isCheckedOut && project.checkedOutBy.toString() === req.userId) {
+      const operation = existingFile ? 'update' : 'add';
+      await trackSessionChange(project, operation, fileData.name);
+    }
+    
     await project.save();
     
     res.status(201).json({
@@ -418,6 +550,12 @@ router.post('/:projectId/folders', auth, async (req, res) => {
     };
 
     project.files.push(folderData);
+    
+    // Track session changes if user is checked out  
+    if (project.isCheckedOut && project.checkedOutBy.toString() === req.userId) {
+      await trackSessionChange(project, 'add', `${folderData.name}/`);
+    }
+    
     await project.save();
     
     res.status(201).json({
@@ -468,6 +606,11 @@ router.put('/:projectId/files/:fileId', auth, async (req, res) => {
     }
     file.updatedAt = new Date();
 
+    // Track session changes if user is checked out
+    if (project.isCheckedOut && project.checkedOutBy.toString() === req.userId) {
+      await trackSessionChange(project, 'update', file.name);
+    }
+    
     await project.save();
     
     res.json({
@@ -509,8 +652,17 @@ router.delete('/:projectId/files/:fileId', auth, async (req, res) => {
       project.files = project.files.filter(f => !f.path.startsWith(folderPath) && f._id.toString() !== fileId);
     }
 
+    // Store file name before deletion for change tracking
+    const fileName = file.name;
+    
     // Remove the file/folder
     project.files.pull(fileId);
+    
+    // Track session changes if user is checked out
+    if (project.isCheckedOut && project.checkedOutBy.toString() === req.userId) {
+      await trackSessionChange(project, 'delete', fileName);
+    }
+    
     await project.save();
     
     res.json({ message: 'File deleted successfully' });
@@ -549,6 +701,210 @@ router.get('/:projectId/files/:fileId', auth, async (req, res) => {
   } catch (error) {
     console.error('Error getting file:', error);
     res.status(500).json({ error: 'Failed to get file' });
+  }
+});
+
+// Test route to check all projects in database (for debugging)
+router.get('/test/all', async (req, res) => {
+  try {
+    const projects = await Project.find({})
+      .populate('owner', 'username profile.name')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      total: projects.length,
+      projects: projects
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Invite collaborator to project
+router.post('/:projectId/invite', auth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { userId, role = 'collaborator' } = req.body;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Project not found' 
+      });
+    }
+
+    // Check if user is project owner
+    if (project.owner.toString() !== req.userId) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Only project owners can invite collaborators' 
+      });
+    }
+
+    // Check if user to invite exists
+    const User = require('../models/User');
+    const userToInvite = await User.findById(userId);
+    if (!userToInvite) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'User to invite not found' 
+      });
+    }
+
+    // Check if user is already a member
+    const isAlreadyMember = project.members.some(
+      member => member.user.toString() === userId
+    );
+    if (isAlreadyMember) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'User is already a collaborator on this project' 
+      });
+    }
+
+    // Add user directly as collaborator
+    project.members.push({
+      user: userId,
+      role: role,
+      joinedAt: new Date()
+    });
+
+    await project.save();
+
+    res.json({
+      success: true,
+      message: 'Collaborator added successfully',
+      data: {
+        project: {
+          _id: project._id,
+          name: project.name,
+        },
+        newCollaborator: {
+          _id: userToInvite._id,
+          username: userToInvite.username,
+          profile: userToInvite.profile,
+          role: role
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error inviting collaborator:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to invite collaborator' 
+    });
+  }
+});
+
+// Remove collaborator from project  
+router.delete('/:projectId/members/:memberId', auth, async (req, res) => {
+  try {
+    const { projectId, memberId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Project not found' 
+      });
+    }
+
+    // Check if user is project owner or removing themselves
+    const memberToRemove = project.members.find(
+      member => member.user.toString() === memberId
+    );
+    
+    if (!memberToRemove) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Member not found in project' 
+      });
+    }
+
+    const isOwner = project.owner.toString() === req.userId;
+    const isRemovingSelf = memberId === req.userId;
+
+    if (!isOwner && !isRemovingSelf) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Permission denied' 
+      });
+    }
+
+    // Remove member
+    project.members = project.members.filter(
+      member => member.user.toString() !== memberId
+    );
+
+    await project.save();
+
+    res.json({
+      success: true,
+      message: isRemovingSelf ? 'Left project successfully' : 'Collaborator removed successfully',
+      data: {
+        project: {
+          _id: project._id,
+          name: project.name,
+          membersCount: project.members.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error removing collaborator:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to remove collaborator' 
+    });
+  }
+});
+
+// Download project files as JSON (for client-side ZIP creation)
+router.get('/:id/download', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const project = await Project.findById(id)
+      .populate('owner', 'username profile.name profile.avatar')
+      .populate('members.user', 'username profile.name profile.avatar');
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Check if user has access (owner or collaborator)
+    const isOwner = project.owner._id.toString() === req.userId;
+    const isCollaborator = project.members.some(member => 
+      member.user._id.toString() === req.userId
+    );
+
+    if (!isOwner && !isCollaborator) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Prepare project data for download
+    const downloadData = {
+      projectName: project.name,
+      description: project.description,
+      owner: project.owner.profile?.name || project.owner.username,
+      createdAt: project.createdAt,
+      files: project.files.map(file => ({
+        name: file.name,
+        path: file.path,
+        content: file.content,
+        language: file.language,
+        size: file.size,
+        lastModified: file.lastModified
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: downloadData
+    });
+  } catch (error) {
+    console.error('Download project error:', error);
+    res.status(500).json({ error: 'Failed to prepare project download' });
   }
 });
 

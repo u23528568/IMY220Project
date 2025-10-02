@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const User = require('../models/User');
+const Project = require('../models/Project');
+const Checkin = require('../models/Checkin');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'repofox-secret-key-2024';
@@ -195,6 +197,125 @@ router.post('/profile/upload-avatar', auth, upload.single('avatar'), async (req,
   } catch (error) {
     console.error('Avatar upload error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user favorites
+router.get('/favorites', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId)
+      .populate({
+        path: 'favorites',
+        populate: {
+          path: 'owner',
+          select: 'username profile.name profile.avatar'
+        }
+      });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user.favorites || []);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add project to favorites
+router.post('/favorites/:projectId', auth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if already favorited
+    if (user.favorites.includes(projectId)) {
+      return res.status(400).json({ error: 'Project already in favorites' });
+    }
+
+    user.favorites.push(projectId);
+    await user.save();
+
+    res.json({ message: 'Project added to favorites' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove project from favorites
+router.delete('/favorites/:projectId', auth, async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.favorites = user.favorites.filter(fav => fav.toString() !== projectId);
+    await user.save();
+
+    res.json({ message: 'Project removed from favorites' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete user profile (account deletion)
+router.delete('/profile', auth, async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Find the user first to ensure they exist
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // 1. Delete all projects owned by the user
+    await Project.deleteMany({ owner: userId });
+
+    // 2. Remove user from all projects they're a member of
+    await Project.updateMany(
+      { 'members.user': userId },
+      { $pull: { members: { user: userId } } }
+    );
+
+    // 3. Remove all friend requests involving the user (from friendRequests subdocuments)
+    await User.updateMany(
+      { 'friendRequests.from': userId },
+      { $pull: { friendRequests: { from: userId } } }
+    );
+
+    // 4. Remove user from all other users' friends lists
+    await User.updateMany(
+      { friends: userId },
+      { $pull: { friends: userId } }
+    );
+
+    // 5. Delete all checkins by the user
+    await Checkin.deleteMany({ user: userId });
+
+    // 6. Remove user from favorites lists
+    await User.updateMany(
+      {},
+      { $pull: { favorites: { $in: await Project.find({ owner: userId }).distinct('_id') } } }
+    );
+
+    // 7. Finally, delete the user account
+    await User.findByIdAndDelete(userId);
+
+    res.json({ 
+      message: 'Account deleted successfully',
+      deleted: true
+    });
+  } catch (error) {
+    console.error('Delete profile error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
   }
 });
 

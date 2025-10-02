@@ -1,25 +1,28 @@
-# Frontend build stage
-FROM node:18-alpine as frontend-build
-WORKDIR /app/frontend
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-# Backend stage
+# Use Node.js runtime as base image
 FROM node:20-alpine
+
+# Set working directory
 WORKDIR /app
 
-# Copy backend
-COPY backend/package*.json ./
+# Copy package.json and install dependencies
+COPY package*.json ./
 RUN npm install
-COPY backend/ ./
 
-# Copy frontend build
-COPY --from=frontend-build /app/frontend/dist ./public
+# Copy all source files
+COPY . .
 
-RUN mkdir -p uploads
+# Build frontend
+RUN npm run build
 
+# Create uploads directory
+RUN mkdir -p backend/uploads
+
+# Set environment to production
+ENV NODE_ENV=production
+
+# Expose port
 EXPOSE 5000
 
-CMD ["npm", "start"]
+# Change to backend directory and start server
+WORKDIR /app/backend
+CMD ["node", "server.js"]

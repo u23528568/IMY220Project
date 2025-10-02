@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
@@ -46,6 +46,10 @@ const userSchema = new mongoose.Schema({
   friends: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  }],
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project'
   }],
   friendRequests: [{
     from: {

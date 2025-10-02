@@ -31,6 +31,16 @@ const checkinSchema = new mongoose.Schema({
     modified: [String],
     deleted: [String]
   },
+  checkedInAt: {
+    type: Date
+  },
+  checkedOutAt: {
+    type: Date
+  },
+  timeSpent: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

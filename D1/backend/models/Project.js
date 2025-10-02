@@ -117,6 +117,12 @@ const projectSchema = new mongoose.Schema({
   checkedOutAt: {
     type: Date
   },
+  // Session change tracking
+  sessionChanges: {
+    added: [String],
+    modified: [String], 
+    deleted: [String]
+  },
   createdAt: {
     type: Date,
     default: Date.now

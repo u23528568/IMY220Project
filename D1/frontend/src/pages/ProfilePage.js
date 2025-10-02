@@ -4,6 +4,8 @@ import EditProfile from "../components/EditProfile";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
+import { detectLanguagesFromFiles, getLanguageColor } from "../utils/languageDetection";
+import { formatDateToCAT } from "../utils/timezone";
 
 function ProfilePage() {
   const [editing, setEditing] = useState(false);
@@ -48,11 +50,26 @@ function ProfilePage() {
         <div className="md:col-span-1">
           {!editing ? (
             <div className="bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col items-center">
-              <img
-                src={user?.profile?.avatar}
-                alt="User Avatar"
-                className="w-32 h-32 rounded-full border-0 object-cover"
-              />
+              {user?.profile?.avatar ? (
+                <img
+                  src={user.profile.avatar}
+                  alt="User Avatar"
+                  className="w-32 h-32 rounded-full border-0 object-cover"
+                />
+              ) : (
+                <div className="w-32 h-32 rounded-full border-0 flex items-center justify-center bg-gray-700">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    strokeWidth="1.5" 
+                    stroke="currentColor" 
+                    className="w-16 h-16 text-gray-400"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                </div>
+              )}
               <h1 className="text-2xl font-bold mt-4 text-orange-400">
                 {user?.username || "Loading..."}
               </h1>
@@ -79,12 +96,16 @@ function ProfilePage() {
                 <div className="mt-4 text-left w-full">
                   <h2 className="font-semibold text-lg">Joined:</h2>
                   <p className="text-gray-300 text-sm mt-2">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {formatDateToCAT(user.createdAt)}
                   </p>
                 </div>
               )}
-              <button className="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded w-full" onClick={() => setEditing(true)}>
-                Edit Profile
+              <button className="mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded w-full flex items-center justify-center space-x-2" onClick={() => setEditing(true)}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                  <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                </svg>
+                <span>Edit Profile</span>
               </button>
             </div>
           ) : (
@@ -133,27 +154,30 @@ function ProfilePage() {
                         <p className="text-gray-300 text-sm mt-1">
                           {project.description || "No description"}
                         </p>
-                        {project.hashtags && project.hashtags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {project.hashtags.slice(0, 3).map((tag, index) => (
-                              <span 
-                                key={index} 
-                                className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                            {project.hashtags.length > 3 && (
-                              <span className="text-gray-400 text-xs">
-                                +{project.hashtags.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        {(() => {
+                          const languages = detectLanguagesFromFiles(project.files || []);
+                          return languages.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {languages.slice(0, 3).map((language, index) => (
+                                <span 
+                                  key={index} 
+                                  className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                                >
+                                  {language}
+                                </span>
+                              ))}
+                              {languages.length > 3 && (
+                                <span className="text-gray-400 text-xs">
+                                  +{languages.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="text-right">
                         <span className="text-sm text-gray-400">
-                          {new Date(project.createdAt).toLocaleDateString()}
+                          {formatDateToCAT(project.createdAt)}
                         </span>
                         {project.type && (
                           <p className="text-xs text-gray-500 mt-1">{project.type}</p>

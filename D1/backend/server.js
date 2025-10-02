@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
 const checkinRoutes = require('./routes/checkins');
+const friendRoutes = require('./routes/friends');
+const activityRoutes = require('./routes/activity');
 
 dotenv.config();
 
@@ -25,6 +27,17 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/checkins', checkinRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/activity', activityRoutes);
+
+// Serve static frontend files in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
 
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/repofox';

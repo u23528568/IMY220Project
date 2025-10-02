@@ -39,3 +39,15 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Docker volumes and data
+docker-data/
+mongodb-data/
+
+# Upload directories (user-generated content)
+backend/uploads/
+uploads/
+
+# Demo and test files
+*-demo.js
+*-test.js

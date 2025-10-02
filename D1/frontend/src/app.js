@@ -11,6 +11,8 @@ import FriendsPage from "./pages/FriendsPage";
 import TeamsPage from "./pages/TeamsPage";
 import Team1Page from "./pages/Team1Page";
 import AboutPage from "./pages/AboutPage";
+import EditProjectPage from "./pages/EditProjectPage";
+import UserProfile from "./pages/UserProfile";
 
 function App() {
   return (
@@ -36,6 +38,11 @@ function App() {
             <FriendsPage />
           </ProtectedRoute>
         } />
+        <Route path="/user/:identifier" element={
+          <ProtectedRoute>
+            <UserProfile />
+          </ProtectedRoute>
+        } />
         <Route path="/project" element={
           <ProtectedRoute>
             <ProjectPage />
@@ -44,6 +51,11 @@ function App() {
         <Route path="/projectview" element={
           <ProtectedRoute>
             <ProjectViewPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/edit-project" element={
+          <ProtectedRoute>
+            <EditProjectPage />
           </ProtectedRoute>
         } />
         <Route path="/teams" element={

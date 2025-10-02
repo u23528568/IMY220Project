@@ -24,25 +24,25 @@ export default function Header() {
 				<img 
 					src="/assets/images/Logo.jpg" 
 					alt="Repofox Logo" 
-					className="w-6 h-6 cursor-pointer  rounded-full" 
+					className="w-6 h-6 cursor-pointer rounded-full" 
 					onClick={() => navigate("/home")}
 				/>
 				<span 
-					className="text-orange-400 font-bold cursor-pointer"
+					className="text-orange-400 font-display font-bold text-xl cursor-pointer tracking-tight"
 					onClick={() => navigate("/home")}
 				>
-					Repofox
+					Repo<span className="text-white">fox</span>
 				</span>
 			</div>
 			
 			<div className="flex items-center space-x-4">
-				<span className="cursor-pointer hover:text-orange-400 text-white" onClick={() => navigate("/project")}>
+				<span className="cursor-pointer hover:text-orange-400 text-white font-medium transition-colors" onClick={() => navigate("/project")}>
 					Repos
 				</span>
-				<span className="cursor-pointer hover:text-orange-400 text-white" onClick={() => navigate("/friends")}>
+				<span className="cursor-pointer hover:text-orange-400 text-white font-medium transition-colors" onClick={() => navigate("/friends")}>
 					Friends
 				</span>
-				<span className="cursor-pointer hover:text-orange-400 text-white" onClick={() => navigate("/about")}>
+				<span className="cursor-pointer hover:text-orange-400 text-white font-medium transition-colors" onClick={() => navigate("/about")}>
 					About
 				</span>
 				
@@ -52,13 +52,26 @@ export default function Header() {
 						className="flex items-center space-x-2 cursor-pointer"
 						onClick={() => setShowDropdown(!showDropdown)}
 					>
-						<img
-							src={user?.profile?.avatar || "/assets/images/1000_F_500213410_oXAyKG24tasVFjl4OgCLkYkglvypBMlq.jpg"}
-							alt="User Avatar"
-							className="w-8 h-8 rounded-full object-cover border-0"
-						/>
+						{user?.profile?.avatar ? (
+							<img
+								src={user.profile.avatar}
+								alt="User Avatar"
+								className="w-8 h-8 rounded-full object-cover border-0"
+							/>
+						) : (
+							<svg 
+								xmlns="http://www.w3.org/2000/svg" 
+								fill="none" 
+								viewBox="0 0 24 24" 
+								strokeWidth="1.5" 
+								stroke="currentColor" 
+								className="w-8 h-8 text-white"
+							>
+								<path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+							</svg>
+						)}
 						<span className="text-white text-sm">
-							{user?.profile?.name || user?.username || 'User'}
+							{user?.username || 'User'}
 						</span>
 						<svg 
 							className={`w-4 h-4 text-white transition-transform ${showDropdown ? 'rotate-180' : ''}`} 

@@ -109,18 +109,24 @@ export function AuthProvider({ children }) {
 
   // Login function
   const login = async (credentials) => {
+    console.log('AuthContext: Starting login process');
     dispatch({ type: AUTH_ACTIONS.LOGIN_START });
 
     try {
+      console.log('AuthContext: Calling ApiService.login');
       const result = await ApiService.login(credentials);
+      console.log('AuthContext: Received result from ApiService:', result);
 
       if (result.success) {
+        console.log('AuthContext: Login success, dispatching LOGIN_SUCCESS');
         dispatch({
           type: AUTH_ACTIONS.LOGIN_SUCCESS,
           payload: result.data.user,
         });
+        console.log('AuthContext: Returning success');
         return { success: true };
       } else {
+        console.log('AuthContext: Login failed, dispatching LOGIN_FAILURE');
         dispatch({
           type: AUTH_ACTIONS.LOGIN_FAILURE,
           payload: result.error,
@@ -128,6 +134,7 @@ export function AuthProvider({ children }) {
         return { success: false, error: result.error };
       }
     } catch (error) {
+      console.error('AuthContext: Exception caught in login:', error);
       dispatch({
         type: AUTH_ACTIONS.LOGIN_FAILURE,
         payload: 'Login failed. Please try again.',

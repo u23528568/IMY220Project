@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
+import { detectLanguagesFromFiles, getLanguageColor } from "../utils/languageDetection";
+import { formatDateToCAT } from "../utils/timezone";
 
 export default function HomePage() {
   const [feedType, setFeedType] = useState("global");
@@ -31,6 +33,8 @@ export default function HomePage() {
         } else {
           setError("Failed to load your repositories");
         }
+
+
       } catch (err) {
         console.error("Error fetching data:", err);
         setError("Failed to load data");
@@ -51,12 +55,30 @@ export default function HomePage() {
       <main className="flex flex-1">
         <aside className="w-64 bg-gray-800 p-4 flex flex-col space-y-6">
           <div className="flex flex-col items-center space-y-2">
-            <img
-              src="/assets/images/profilepic.jpg"
-              alt="User Avatar"
-              className="w-12 h-12 rounded-full cursor-pointer"
-              onClick={() => navigate("/profile")}
-            />
+            {user?.profile?.avatar ? (
+              <img
+                src={user.profile.avatar}
+                alt="User Avatar"
+                className="w-12 h-12 rounded-full cursor-pointer object-cover"
+                onClick={() => navigate("/profile")}
+              />
+            ) : (
+              <div 
+                className="w-12 h-12 rounded-full cursor-pointer flex items-center justify-center bg-gray-700"
+                onClick={() => navigate("/profile")}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  strokeWidth="1.5" 
+                  stroke="currentColor" 
+                  className="w-8 h-8 text-gray-400"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+              </div>
+            )}
             <span className="font-semibold">
               {user?.profile?.name || user?.username || 'User'}
             </span>
@@ -95,6 +117,8 @@ export default function HomePage() {
             )}
           </div>
 
+
+
           <div>
             <h2 className="text-gray-400 text-sm mb-2">Quick Actions</h2>
             <ul className="space-y-2">
@@ -102,7 +126,7 @@ export default function HomePage() {
                 className="bg-orange-600 hover:bg-orange-700 p-2 rounded cursor-pointer text-sm text-center"
                 onClick={() => navigate("/project")}
               >
-                New Project
+                View Projects
               </li>
               <li 
                 className="bg-gray-700 hover:bg-gray-600 p-2 rounded cursor-pointer text-sm text-center"
@@ -115,7 +139,7 @@ export default function HomePage() {
         </aside>
 
         <section className="flex-1 p-6">
-          <h1 className="text-2xl font-bold mb-4">Home</h1>
+          <h1 className="text-3xl font-display font-bold mb-4 tracking-tight">Dashboard</h1>
 
           <div className="bg-gray-800 p-4 rounded-lg shadow-md">
             <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-4">
@@ -176,25 +200,28 @@ export default function HomePage() {
                     </p>
                     <div className="flex justify-between items-center text-xs text-gray-400">
                       <span>By {project.owner?.profile?.name || project.owner?.username || "Unknown"}</span>
-                      <span>{new Date(project.createdAt).toLocaleDateString()}</span>
+                      <span>{formatDateToCAT(project.createdAt)}</span>
                     </div>
-                    {project.hashtags && project.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {project.hashtags.slice(0, 3).map((tag, index) => (
-                          <span 
-                            key={index} 
-                            className="inline-block bg-orange-900 text-orange-200 text-xs px-2 py-1 rounded-full"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                        {project.hashtags.length > 3 && (
-                          <span className="text-gray-400 text-xs">
-                            +{project.hashtags.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {(() => {
+                      const languages = detectLanguagesFromFiles(project.files || []);
+                      return languages.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {languages.slice(0, 3).map((language, index) => (
+                            <span 
+                              key={index} 
+                              className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                            >
+                              {language}
+                            </span>
+                          ))}
+                          {languages.length > 3 && (
+                            <span className="text-gray-400 text-xs">
+                              +{languages.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

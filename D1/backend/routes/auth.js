@@ -16,6 +16,7 @@ router.post('/signup', async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({
+        success: false,
         error: 'User with this email or username already exists'
       });
     }
@@ -35,14 +36,27 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Create a clean user object without circular references and large data
+    const userResponse = {
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email,
+      profile: {
+        name: user.profile?.name || '',
+        bio: user.profile?.bio || '',
+        avatar: user.profile?.avatar || '',
+        // Don't include avatarData in signup response to prevent localStorage quota issues
+        // avatarData: user.profile?.avatarData || '',
+        avatarMimeType: user.profile?.avatarMimeType || ''
+      },
+      createdAt: user.createdAt
+    };
+
     res.status(201).json({
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile,
-        createdAt: user.createdAt
+      success: true,
+      data: {
+        token,
+        user: userResponse
       }
     });
   } catch (error) {
@@ -54,15 +68,22 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt:', { email, passwordLength: password?.length });
 
     const user = await User.findOne({ email });
+    console.log('User found:', user ? 'Yes' : 'No');
+    
     if (!user) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      console.log('No user found with email:', email);
+      return res.status(400).json({ success: false, error: 'Invalid credentials' });
     }
 
     const isMatch = await user.comparePassword(password);
+    console.log('Password match:', isMatch);
+    
     if (!isMatch) {
-      return res.status(400).json({ error: 'Invalid credentials' });
+      console.log('Password does not match for user:', email);
+      return res.status(400).json({ success: false, error: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
@@ -71,15 +92,53 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    console.log('Login successful for:', email);
+    
+    // Create a clean user object without circular references and large data
+    const userResponse = {
+      id: user._id.toString(),
+      username: user.username,
+      email: user.email,
+      profile: {
+        name: user.profile?.name || '',
+        bio: user.profile?.bio || '',
+        avatar: user.profile?.avatar || '',
+        // Don't include avatarData in login response to prevent localStorage quota issues
+        // avatarData: user.profile?.avatarData || '',
+        avatarMimeType: user.profile?.avatarMimeType || ''
+      },
+      createdAt: user.createdAt
+    };
+    
+    console.log('Clean user response created (without avatarData)');
+    
     res.json({
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        profile: user.profile,
-        createdAt: user.createdAt
+      success: true,
+      data: {
+        token,
+        user: userResponse
       }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+  // Since we're using stateless JWT tokens, logout is handled on frontend
+  // But we can use this endpoint for any server-side cleanup if needed
+  res.json({ message: 'Logout successful' });
+});
+
+// Test route to check all users in database (for debugging)
+router.get('/test/users', async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password');
+    res.json({
+      total: users.length,
+      users: users
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
