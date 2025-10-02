@@ -1,0 +1,53 @@
+node_modules/
+IMY220_Project_D1.pdf/
+
+# Build outputs
+dist/
+build/
+frontend/public/bundle.js
+frontend/public/bundle.js.map
+
+# Package lock files (can cause merge conflicts)
+package-lock.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker volumes and data
+docker-data/
+mongodb-data/
+
+# Upload directories (user-generated content)
+backend/uploads/
+uploads/
+
+# Demo and test files
+*-demo.js
+*-test.js
