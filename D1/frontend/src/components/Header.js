@@ -95,6 +95,17 @@ export default function Header() {
 							>
 								My Profile
 							</button>
+							{user?.isAdmin && (
+								<button 
+									className="block px-4 py-2 text-sm text-orange-400 hover:bg-gray-600 w-full text-left font-semibold"
+									onClick={() => {
+										navigate("/admin");
+										setShowDropdown(false);
+									}}
+								>
+									Admin Dashboard
+								</button>
+							)}
 							<button 
 								className="block px-4 py-2 text-sm text-white hover:bg-gray-600 w-full text-left"
 								onClick={handleLogout}

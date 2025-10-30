@@ -33,8 +33,11 @@ export default function EditProjectPage() {
         if (result.success) {
           const projectData = result.data;
           
-          // Check if user is the owner
-          if (projectData.owner?._id !== user?.id) {
+          // Check if user is the owner or admin
+          const isOwner = projectData.owner?._id === user?.id;
+          const isAdmin = user?.isAdmin || false;
+          
+          if (!isOwner && !isAdmin) {
             setError("You don't have permission to edit this project");
             setLoading(false);
             return;

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Files from "../components/Files";
 import ProjectHistory from "../components/ProjectHistory";
+import Discussion from "../components/Discussion";
 import { useAuth } from "../context/AuthContext";
 import ApiService from "../services/ApiService";
 import { detectLanguagesFromFiles, getLanguageColor } from "../utils/languageDetection";
@@ -110,7 +111,8 @@ export default function ProjectViewPage() {
 
   const isOwner = project.owner?._id === user?.id;
   const isMember = project.members?.some(member => member.user?._id === user?.id);
-  const hasWorkPermission = isOwner || isMember;
+  const isAdmin = user?.isAdmin || false;
+  const hasWorkPermission = isOwner || isMember || isAdmin;
 
   const handleFavoriteToggle = async () => {
     if (favoritesLoading) return;
@@ -282,7 +284,7 @@ export default function ProjectViewPage() {
               </span>
             </div>
             <div className="flex space-x-3">
-              {isOwner && (
+              {(isOwner || isAdmin) && (
                 <button 
                   className="text-gray-400 hover:text-orange-400 text-lg"
                   onClick={() => navigate("/edit-project", { state: { projectId: project._id } })}
@@ -394,7 +396,7 @@ export default function ProjectViewPage() {
                             <div className="text-gray-400">{member.role || "Member"}</div>
                           </div>
                         </div>
-                        {isOwner && (
+                        {(isOwner || isAdmin) && (
                           <button
                             onClick={() => handleRemoveCollaborator(
                               member.user._id, 
@@ -421,7 +423,7 @@ export default function ProjectViewPage() {
 
               {/* Collaboration Actions */}
               <div className="pt-2 border-t border-gray-700">
-                {isOwner ? (
+                {(isOwner || isAdmin) ? (
                   <div className="space-y-2">
                     <button 
                       className="w-full text-left text-xs text-orange-400 hover:text-orange-300 flex items-center space-x-2"
@@ -565,8 +567,8 @@ export default function ProjectViewPage() {
                 </button>
               )}
               
-              {/* Edit Project Button - Only for owners */}
-              {isOwner && (
+              {/* Edit Project Button - Only for owners and admins */}
+              {(isOwner || isAdmin) && (
                 <button 
                   className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-sm flex items-center space-x-2"
                   onClick={() => navigate("/edit-project", { state: { projectId: project._id } })}
@@ -763,6 +765,12 @@ export default function ProjectViewPage() {
 
             {/* Project History */}
             <ProjectHistory projectId={project._id} />
+
+            {/* Discussion Section */}
+            <div className="bg-gray-700 p-4 rounded">
+              <h3 className="font-semibold mb-3">💬 Discussion</h3>
+              <Discussion projectId={project._id} isProjectOwner={isOwner} />
+            </div>
           </div>
         </section>
       </main>

@@ -6,39 +6,51 @@ class ApiService {
   // Helper method to make API calls
   static async makeRequest(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
-    };
+    // Build headers, but don't force Content-Type when sending FormData
+    const providedHeaders = options.headers || {};
+    const headers = { ...providedHeaders };
 
-    // Add auth token if available
+    // If body is NOT FormData, ensure JSON content-type (unless provided)
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    }
+
+    // Add auth token if available (use the canonical 'authToken' key)
     const token = localStorage.getItem('authToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      headers.Authorization = headers.Authorization || `Bearer ${token}`;
     }
+
+    const config = {
+      ...options,
+      headers,
+    };
 
     try {
       const response = await fetch(url, config);
       console.log('Frontend: Response status:', response.status, response.statusText);
-      const data = await response.json();
-      console.log('Frontend: Response data:', data);
+
+      // Only attempt to parse JSON when response has a JSON content-type
+      let data = null;
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+          console.log('Frontend: Response data:', data);
+        } catch (err) {
+          console.warn('Frontend: Failed to parse JSON response', err);
+        }
+      }
 
       if (response.ok) {
-        // If the response already has success/data structure, return it as-is
-        if (data.hasOwnProperty('success')) {
-          console.log('Frontend: Returning data with success property');
+        if (data && Object.prototype.hasOwnProperty.call(data, 'success')) {
           return data;
         }
-        // Otherwise, wrap it in the expected structure
-        console.log('Frontend: Wrapping data in success structure');
         return { success: true, data };
       } else {
-        console.log('Frontend: Request failed with status:', response.status);
-        return { success: false, error: data.error || 'An error occurred' };
+        const errorMsg = data && data.error ? data.error : 'An error occurred';
+        console.log('Frontend: Request failed with status:', response.status, errorMsg);
+        return { success: false, error: errorMsg };
       }
     } catch (error) {
       console.error('Frontend: Network error:', error);
@@ -213,6 +225,10 @@ class ApiService {
     return this.makeRequest('/activity/global');
   }
 
+  static async getFriendsProjects() {
+    return this.makeRequest('/projects/friends');
+  }
+
   // Favorites methods
   static async getUserFavorites() {
     return this.makeRequest('/users/favorites');
@@ -247,13 +263,10 @@ class ApiService {
       });
     }
 
+    // Let makeRequest attach the auth header and avoid forcing Content-Type for FormData
     return this.makeRequest(`/checkins/${projectId}/check-out`, {
       method: 'POST',
       body: formData,
-      // Don't set Content-Type header, let browser set it for FormData
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
     });
   }
 
@@ -365,6 +378,20 @@ class ApiService {
     return this.makeRequest('/friends/list');
   }
 
+  static async getFriends() {
+    return this.makeRequest('/friends/list');
+  }
+
+  static async getUserFriends(userId) {
+    // For now, use the same endpoint as it returns the current user's friends
+    // This would need a backend route to get another user's friends list
+    return this.makeRequest('/friends/list');
+  }
+
+  static async getFavorites() {
+    return this.makeRequest('/users/favorites');
+  }
+
   static async removeFriend(friendId) {
     return this.makeRequest(`/friends/${friendId}`, {
       method: 'DELETE'
@@ -391,6 +418,100 @@ class ApiService {
 
   static getAuthToken() {
     return localStorage.getItem('authToken');
+  }
+
+  // Admin methods
+  static async adminGetAllProjects() {
+    return this.makeRequest('/admin/projects');
+  }
+
+  static async adminEditProject(projectId, updateData) {
+    return this.makeRequest(`/admin/projects/${projectId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  }
+
+  static async adminDeleteProject(projectId) {
+    return this.makeRequest(`/admin/projects/${projectId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  static async adminGetAllUsers() {
+    return this.makeRequest('/admin/users');
+  }
+
+  static async adminEditUser(userId, updateData) {
+    return this.makeRequest(`/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  }
+
+  static async adminDeleteUser(userId) {
+    return this.makeRequest(`/admin/users/${userId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  static async adminGetAllCheckins() {
+    return this.makeRequest('/admin/checkins');
+  }
+
+  static async adminEditCheckin(checkinId, updateData) {
+    return this.makeRequest(`/admin/checkins/${checkinId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  }
+
+  static async adminDeleteCheckin(checkinId) {
+    return this.makeRequest(`/admin/checkins/${checkinId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  static async adminGetStats() {
+    return this.makeRequest('/admin/stats');
+  }
+
+  static async adminEditProjectFile(projectId, fileId, updateData) {
+    return this.makeRequest(`/admin/projects/${projectId}/files/${fileId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  }
+
+  static async adminDeleteProjectFile(projectId, fileId) {
+    return this.makeRequest(`/admin/projects/${projectId}/files/${fileId}`, {
+      method: 'DELETE'
+    });
+  }
+
+  // Comment/Discussion methods
+  static async getProjectComments(projectId) {
+    return this.makeRequest(`/comments/${projectId}`);
+  }
+
+  static async createComment(projectId, content, parentId = null) {
+    return this.makeRequest(`/comments/${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify({ content, parent: parentId })
+    });
+  }
+
+  static async updateComment(commentId, content) {
+    return this.makeRequest(`/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content })
+    });
+  }
+
+  static async deleteComment(commentId) {
+    return this.makeRequest(`/comments/${commentId}`, {
+      method: 'DELETE'
+    });
   }
 }
 

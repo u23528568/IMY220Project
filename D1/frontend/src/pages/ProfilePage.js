@@ -10,6 +10,8 @@ import { formatDateToCAT } from "../utils/timezone";
 function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [userProjects, setUserProjects] = useState([]);
+  const [savedProjects, setSavedProjects] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -26,10 +28,21 @@ function ProfilePage() {
         // Fetch user's projects
         const projectsResult = await ApiService.getUserProjects();
         if (projectsResult.success) {
-          // Show only the 3 most recent projects on profile page
-          setUserProjects(projectsResult.data.slice(0, 3));
+          setUserProjects(projectsResult.data);
         } else {
           setError("Failed to load projects");
+        }
+
+        // Fetch saved/favorited projects
+        const favoritesResult = await ApiService.getFavorites();
+        if (favoritesResult.success) {
+          setSavedProjects(favoritesResult.data);
+        }
+
+        // Fetch friends list
+        const friendsResult = await ApiService.getFriends();
+        if (friendsResult.success) {
+          setFriends(friendsResult.data);
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
@@ -115,6 +128,77 @@ function ProfilePage() {
 
         {/* Right Column: Projects and Activity */}
         <div className="md:col-span-2 space-y-8">
+          {/* Friends List */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Friends ({friends.length})</h2>
+              <button
+                onClick={() => navigate("/friends")}
+                className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-sm"
+              >
+                View All
+              </button>
+            </div>
+            
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="bg-gray-800 rounded-lg p-3 animate-pulse">
+                    <div className="h-4 bg-gray-600 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-600 rounded w-2/3"></div>
+                  </div>
+                ))}
+              </div>
+            ) : friends.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {friends.slice(0, 4).map((friend) => (
+                  <div
+                    key={friend._id}
+                    className="bg-gray-800 rounded-lg p-3 hover:bg-gray-700 cursor-pointer transition-colors flex items-center space-x-3"
+                    onClick={() => navigate(`/user/${friend.username}`)}
+                  >
+                    {friend.profile?.avatar ? (
+                      <img
+                        src={friend.profile.avatar}
+                        alt={friend.username}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          strokeWidth="1.5" 
+                          stroke="currentColor" 
+                          className="w-6 h-6 text-gray-400"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-white truncate">
+                        {friend.profile?.name || friend.username}
+                      </h3>
+                      <p className="text-gray-400 text-sm truncate">@{friend.username}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-800 rounded-lg p-6 text-center">
+                <p className="text-gray-400 mb-3">You haven't added any friends yet.</p>
+                <button
+                  onClick={() => navigate("/friends")}
+                  className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-white text-sm"
+                >
+                  Find Friends
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* User Projects */}
           <div>
             <div className="flex justify-between items-center mb-4">
@@ -123,7 +207,7 @@ function ProfilePage() {
                 onClick={() => navigate("/project")}
                 className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-sm"
               >
-                View My Projects
+                View All Projects
               </button>
             </div>
             
@@ -142,7 +226,7 @@ function ProfilePage() {
               </div>
             ) : userProjects.length > 0 ? (
               <div className="space-y-4">
-                {userProjects.map((project) => (
+                {userProjects.slice(0, 3).map((project) => (
                   <div 
                     key={project._id} 
                     className="bg-gray-800 rounded-lg shadow-lg p-4 hover:bg-gray-700 cursor-pointer transition-colors"
@@ -200,19 +284,95 @@ function ProfilePage() {
             )}
           </div>
 
+          {/* Saved Projects */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Saved Projects</h2>
+            </div>
+            
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="bg-gray-800 rounded-lg shadow-lg p-4 animate-pulse">
+                    <div className="h-4 bg-gray-600 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-600 rounded w-3/4"></div>
+                  </div>
+                ))}
+              </div>
+            ) : savedProjects.length > 0 ? (
+              <div className="space-y-4">
+                {savedProjects.slice(0, 3).map((project) => (
+                  <div 
+                    key={project._id} 
+                    className="bg-gray-800 rounded-lg shadow-lg p-4 hover:bg-gray-700 cursor-pointer transition-colors"
+                    onClick={() => navigate("/projectview", { state: { projectId: project._id } })}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-orange-400">{project.name}</h3>
+                        <p className="text-gray-300 text-sm mt-1">
+                          {project.description || "No description"}
+                        </p>
+                        {project.owner && (
+                          <p className="text-gray-500 text-xs mt-2">
+                            by @{project.owner.username}
+                          </p>
+                        )}
+                        {(() => {
+                          const languages = detectLanguagesFromFiles(project.files || []);
+                          return languages.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {languages.slice(0, 3).map((language, index) => (
+                                <span 
+                                  key={index} 
+                                  className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                                >
+                                  {language}
+                                </span>
+                              ))}
+                              {languages.length > 3 && (
+                                <span className="text-gray-400 text-xs">
+                                  +{languages.length - 3} more
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm text-gray-400">
+                          {formatDateToCAT(project.createdAt)}
+                        </span>
+                        {project.type && (
+                          <p className="text-xs text-gray-500 mt-1">{project.type}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+                <p className="text-gray-400">You haven't saved any projects yet.</p>
+              </div>
+            )}
+          </div>
+
           {/* Project Statistics */}
           <div>
             <h2 className="text-xl font-bold mb-4">Statistics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gray-800 rounded-lg shadow-lg p-4 text-center">
                 <h3 className="text-2xl font-bold text-orange-400">{userProjects.length}</h3>
                 <p className="text-gray-300">Total Projects</p>
               </div>
               <div className="bg-gray-800 rounded-lg shadow-lg p-4 text-center">
-                <h3 className="text-2xl font-bold text-orange-400">
-                  {user ? new Date(user.createdAt).getFullYear() : new Date().getFullYear()}
-                </h3>
-                <p className="text-gray-300">Member Since</p>
+                <h3 className="text-2xl font-bold text-orange-400">{savedProjects.length}</h3>
+                <p className="text-gray-300">Saved Projects</p>
+              </div>
+              <div className="bg-gray-800 rounded-lg shadow-lg p-4 text-center">
+                <h3 className="text-2xl font-bold text-orange-400">{friends.length}</h3>
+                <p className="text-gray-300">Friends</p>
               </div>
             </div>
           </div>

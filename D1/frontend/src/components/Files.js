@@ -5,6 +5,7 @@ import { formatDateToCAT } from '../utils/timezone';
 
 export default function Files({ project, onFileSelect }) {
   const { user } = useAuth();
+  const isAdmin = user?.isAdmin || false;
   const [currentPath, setCurrentPath] = useState('/');
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -28,7 +29,7 @@ export default function Files({ project, onFileSelect }) {
     const memberId = typeof member.user === 'object' ? member.user._id : member.user;
     return memberId === user?.id;
   }) || false;
-  const canEdit = isOwner || isCollaborator;
+  const canEdit = isOwner || isCollaborator || isAdmin;
 
   useEffect(() => {
     if (project?.files) {

@@ -12,6 +12,7 @@ export default function UserProfile() {
   const { user: currentUser } = useAuth();
   const [profileUser, setProfileUser] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [relationship, setRelationship] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +32,14 @@ export default function UserProfile() {
           setProfileUser(result.data.user);
           setProjects(result.data.projects || []);
           setRelationship(result.data.relationship || {});
+          
+          // Fetch friends list if they are friends or viewing own profile
+          if (result.data.relationship.isFriend || result.data.relationship.isOwn) {
+            const friendsResult = await ApiService.getUserFriends(result.data.user._id);
+            if (friendsResult.success) {
+              setFriends(friendsResult.data || []);
+            }
+          }
         } else {
           console.error('Profile fetch failed:', result);
           setError(result.error || 'Failed to load user profile');
@@ -192,16 +201,26 @@ export default function UserProfile() {
                   {profileUser.profile?.name || profileUser.username}
                 </h1>
                 <p className="text-gray-400 mb-2">@{profileUser.username}</p>
-                {profileUser.profile?.bio && (
-                  <p className="text-gray-300 mb-3 max-w-md">{profileUser.profile.bio}</p>
+                
+                {/* Show full profile only if friends or own profile */}
+                {(relationship.isFriend || relationship.isOwn) ? (
+                  <>
+                    {profileUser.profile?.bio && (
+                      <p className="text-gray-300 mb-3 max-w-md">{profileUser.profile.bio}</p>
+                    )}
+                    <div className="flex items-center space-x-4 text-sm text-gray-400">
+                      <span>Joined {formatDateToCAT(profileUser.createdAt)}</span>
+                      <span>•</span>
+                      <span>{profileUser.projectCount} projects</span>
+                      <span>•</span>
+                      <span>{profileUser.friendCount} friends</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-gray-500 text-sm italic mt-2">
+                    Add as friend to see full profile
+                  </p>
                 )}
-                <div className="flex items-center space-x-4 text-sm text-gray-400">
-                  <span>Joined {formatDateToCAT(profileUser.createdAt)}</span>
-                  <span>•</span>
-                  <span>{profileUser.projectCount} projects</span>
-                  <span>•</span>
-                  <span>{profileUser.friendCount} friends</span>
-                </div>
               </div>
             </div>
             
@@ -237,60 +256,144 @@ export default function UserProfile() {
           </div>
         </div>
 
-        {/* User Projects */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-bold mb-4">
-            {relationship.isOwn ? 'Your Projects' : `${profileUser.profile?.name || profileUser.username}'s Projects`}
-          </h2>
-          
-          {projects.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p className="mb-2">📁</p>
-              <p>No public projects yet</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects.map((project) => (
-                <div
-                  key={project._id}
-                  className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-orange-500 cursor-pointer transition-colors"
-                  onClick={() => navigate("/projectview", { state: { projectId: project._id } })}
-                >
-                  <h3 className="font-semibold text-orange-400 mb-2">{project.name}</h3>
-                  <p className="text-gray-300 text-sm mb-3 line-clamp-2">
-                    {project.description || "No description available"}
-                  </p>
-                  
-                  <div className="flex justify-between items-center text-xs text-gray-400 mb-2">
-                    <span>{project.type || "Project"}</span>
-                    <span>{formatDateToCAT(project.createdAt)}</span>
-                  </div>
-
-                  {(() => {
-                    const languages = detectLanguagesFromFiles(project.files || []);
-                    return languages.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {languages.slice(0, 3).map((language, index) => (
-                          <span 
-                            key={index} 
-                            className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
-                          >
-                            {language}
-                          </span>
-                        ))}
-                        {languages.length > 3 && (
-                          <span className="text-gray-400 text-xs">
-                            +{languages.length - 3} more
-                          </span>
+        {/* Only show projects and friends if they are friends or viewing own profile */}
+        {(relationship.isFriend || relationship.isOwn) ? (
+          <>
+            {/* Friends List */}
+            {friends.length > 0 && (
+              <div className="bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-bold mb-4">
+                  Friends ({friends.length})
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {friends.slice(0, 8).map((friend) => (
+                    <div
+                      key={friend._id}
+                      className="bg-gray-700 p-3 rounded-lg hover:bg-gray-600 cursor-pointer transition-colors"
+                      onClick={() => navigate(`/user/${friend.username}`)}
+                    >
+                      <div className="flex flex-col items-center text-center">
+                        {friend.profile?.avatar ? (
+                          <img
+                            src={friend.profile.avatar}
+                            alt={friend.username}
+                            className="w-16 h-16 rounded-full object-cover mb-2"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-600 flex items-center justify-center mb-2">
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              strokeWidth="1.5" 
+                              stroke="currentColor" 
+                              className="w-8 h-8 text-gray-400"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            </svg>
+                          </div>
                         )}
+                        <p className="font-semibold text-white text-sm truncate w-full">
+                          {friend.profile?.name || friend.username}
+                        </p>
+                        <p className="text-gray-400 text-xs truncate w-full">
+                          @{friend.username}
+                        </p>
                       </div>
-                    );
-                  })()}
+                    </div>
+                  ))}
                 </div>
-              ))}
+                {friends.length > 8 && (
+                  <p className="text-center text-gray-400 text-sm mt-4">
+                    and {friends.length - 8} more friends
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* User Projects */}
+            <div className="bg-gray-800 rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-bold mb-4">
+                {relationship.isOwn ? 'Your Projects' : `${profileUser.profile?.name || profileUser.username}'s Projects`}
+              </h2>
+              
+              {projects.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="mb-2">📁</p>
+                  <p>No public projects yet</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {projects.map((project) => (
+                    <div
+                      key={project._id}
+                      className="bg-gray-700 p-4 rounded-lg border border-gray-600 hover:border-orange-500 cursor-pointer transition-colors"
+                      onClick={() => navigate("/projectview", { state: { projectId: project._id } })}
+                    >
+                      <h3 className="font-semibold text-orange-400 mb-2">{project.name}</h3>
+                      <p className="text-gray-300 text-sm mb-3 line-clamp-2">
+                        {project.description || "No description available"}
+                      </p>
+                      
+                      <div className="flex justify-between items-center text-xs text-gray-400 mb-2">
+                        <span>{project.type || "Project"}</span>
+                        <span>{formatDateToCAT(project.createdAt)}</span>
+                      </div>
+
+                      {(() => {
+                        const languages = detectLanguagesFromFiles(project.files || []);
+                        return languages.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {languages.slice(0, 3).map((language, index) => (
+                              <span 
+                                key={index} 
+                                className={`inline-block ${getLanguageColor(language)} text-white text-xs px-2 py-1 rounded-full font-medium`}
+                              >
+                                {language}
+                              </span>
+                            ))}
+                            {languages.length > 3 && (
+                              <span className="text-gray-400 text-xs">
+                                +{languages.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          /* Not friends - show restricted message */
+          <div className="bg-gray-800 rounded-lg shadow-lg p-12 text-center">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth="1.5" 
+              stroke="currentColor" 
+              className="w-16 h-16 text-gray-600 mx-auto mb-4"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-gray-300 mb-2">Profile is Private</h3>
+            <p className="text-gray-400 mb-6">
+              Send a friend request to view {profileUser.profile?.name || profileUser.username}'s projects and friends list.
+            </p>
+            {!relationship.hasPendingRequest && (
+              <button 
+                onClick={handleSendFriendRequest}
+                disabled={actionLoading}
+                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-6 py-3 rounded-lg"
+              >
+                {actionLoading ? 'Sending...' : 'Send Friend Request'}
+              </button>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

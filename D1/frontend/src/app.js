@@ -13,6 +13,7 @@ import Team1Page from "./pages/Team1Page";
 import AboutPage from "./pages/AboutPage";
 import EditProjectPage from "./pages/EditProjectPage";
 import UserProfile from "./pages/UserProfile";
+import AdminPage from "./pages/AdminPage";
 
 function App() {
   return (
@@ -66,6 +67,11 @@ function App() {
         <Route path="/team1" element={
           <ProtectedRoute>
             <Team1Page />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminPage />
           </ProtectedRoute>
         } />
       </Routes>

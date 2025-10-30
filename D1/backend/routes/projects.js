@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const Project = require('../models/Project');
 const Checkin = require('../models/Checkin');
+const User = require('../models/User');
 const multer = require('multer');
 const path = require('path');
 
@@ -307,6 +308,74 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// Get friends' projects (created and saved by friends)
+router.get('/friends', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.userId).populate('friends favorites');
+    
+    if (!currentUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get friend IDs
+    const friendIds = currentUser.friends.map(friend => friend._id || friend);
+
+    // Get projects created by friends OR saved by friends
+    const friendsCreatedProjects = await Project.find({
+      owner: { $in: friendIds },
+      visibility: { $in: ['public', 'friends'] }
+    })
+    .populate('owner', 'username profile.name profile.avatar')
+    .populate('members.user', 'username profile.name profile.avatar')
+    .sort({ createdAt: -1 });
+
+    // Get favorited projects by friends
+    const friendsWithFavorites = await User.find({
+      _id: { $in: friendIds }
+    }).populate({
+      path: 'favorites',
+      populate: {
+        path: 'owner',
+        select: 'username profile.name profile.avatar'
+      }
+    });
+
+    const favoritedProjects = [];
+    friendsWithFavorites.forEach(friend => {
+      if (friend.favorites && friend.favorites.length > 0) {
+        friend.favorites.forEach(project => {
+          if (project && !favoritedProjects.some(p => p._id.toString() === project._id.toString())) {
+            favoritedProjects.push({
+              ...project.toObject(),
+              isSaved: true
+            });
+          }
+        });
+      }
+    });
+
+    // Combine and deduplicate
+    const allProjects = [...friendsCreatedProjects.map(p => p.toObject()), ...favoritedProjects];
+    const uniqueProjects = allProjects.filter((project, index, self) =>
+      index === self.findIndex(p => p._id.toString() === project._id.toString())
+    );
+
+    // Sort by creation date (newest first)
+    uniqueProjects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      data: uniqueProjects
+    });
+  } catch (error) {
+    console.error('Error fetching friends projects:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 // Search projects
 router.get('/search', auth, async (req, res) => {
   try {
@@ -387,8 +456,12 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Check if user is the owner
-    if (project.owner.toString() !== req.userId) {
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Check if user is the owner or admin
+    if (project.owner.toString() !== req.userId && !isAdmin) {
       return res.status(403).json({ error: 'Only the project owner can edit this project' });
     }
 
@@ -431,9 +504,14 @@ router.post('/:projectId/files', auth, upload.single('file'), async (req, res) =
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
     // Check if user has permission to upload files
     const isMember = project.owner.toString() === req.userId || 
-                     project.members.some(member => member.user.toString() === req.userId);
+                     project.members.some(member => member.user.toString() === req.userId) ||
+                     isAdmin;
     
     if (!isMember) {
       return res.status(403).json({ error: 'Permission denied' });
@@ -522,9 +600,14 @@ router.post('/:projectId/folders', auth, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
     // Check if user has permission
     const isMember = project.owner.toString() === req.userId || 
-                     project.members.some(member => member.user.toString() === req.userId);
+                     project.members.some(member => member.user.toString() === req.userId) ||
+                     isAdmin;
     
     if (!isMember) {
       return res.status(403).json({ error: 'Permission denied' });
@@ -579,9 +662,14 @@ router.put('/:projectId/files/:fileId', auth, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
     // Check if user has permission
     const isMember = project.owner.toString() === req.userId || 
-                     project.members.some(member => member.user.toString() === req.userId);
+                     project.members.some(member => member.user.toString() === req.userId) ||
+                     isAdmin;
     
     if (!isMember) {
       return res.status(403).json({ error: 'Permission denied' });
@@ -633,9 +721,14 @@ router.delete('/:projectId/files/:fileId', auth, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
     // Check if user has permission
     const isMember = project.owner.toString() === req.userId || 
-                     project.members.some(member => member.user.toString() === req.userId);
+                     project.members.some(member => member.user.toString() === req.userId) ||
+                     isAdmin;
     
     if (!isMember) {
       return res.status(403).json({ error: 'Permission denied' });
@@ -734,8 +827,12 @@ router.post('/:projectId/invite', auth, async (req, res) => {
       });
     }
 
-    // Check if user is project owner
-    if (project.owner.toString() !== req.userId) {
+    // Get user to check if admin
+    const user = await User.findById(req.userId);
+    const isAdmin = user?.isAdmin || false;
+
+    // Check if user is project owner or admin
+    if (project.owner.toString() !== req.userId && !isAdmin) {
       return res.status(403).json({ 
         success: false, 
         error: 'Only project owners can invite collaborators' 
@@ -743,7 +840,6 @@ router.post('/:projectId/invite', auth, async (req, res) => {
     }
 
     // Check if user to invite exists
-    const User = require('../models/User');
     const userToInvite = await User.findById(userId);
     if (!userToInvite) {
       return res.status(404).json({ 

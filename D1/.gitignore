@@ -51,3 +51,5 @@ uploads/
 # Demo and test files
 *-demo.js
 *-test.js
+
+ADMIN_IMPLEMENTATION.md

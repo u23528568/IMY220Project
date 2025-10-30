@@ -11,6 +11,8 @@ const projectRoutes = require('./routes/projects');
 const checkinRoutes = require('./routes/checkins');
 const friendRoutes = require('./routes/friends');
 const activityRoutes = require('./routes/activity');
+const adminRoutes = require('./routes/admin');
+const commentRoutes = require('./routes/comments');
 
 dotenv.config();
 
@@ -29,6 +31,8 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/checkins', checkinRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Serve static frontend files in production
 if (process.env.NODE_ENV === 'production') {

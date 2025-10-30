@@ -41,6 +41,7 @@ router.post('/signup', async (req, res) => {
       id: user._id.toString(),
       username: user.username,
       email: user.email,
+      isAdmin: user.isAdmin || false,
       profile: {
         name: user.profile?.name || '',
         bio: user.profile?.bio || '',
@@ -99,6 +100,7 @@ router.post('/login', async (req, res) => {
       id: user._id.toString(),
       username: user.username,
       email: user.email,
+      isAdmin: user.isAdmin || false,
       profile: {
         name: user.profile?.name || '',
         bio: user.profile?.bio || '',

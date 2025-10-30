@@ -10,6 +10,7 @@ export default function HomePage() {
   const [feedType, setFeedType] = useState("global");
   const [projects, setProjects] = useState([]);
   const [userProjects, setUserProjects] = useState([]);
+  const [friendsProjects, setFriendsProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -20,20 +21,34 @@ export default function HomePage() {
       try {
         setLoading(true);
         
-        // Fetch all projects for the global feed
+        // Fetch all projects for the global feed (sorted by newest first)
         const allProjectsResult = await ApiService.getAllProjects();
         if (allProjectsResult.success) {
-          setProjects(allProjectsResult.data);
+          const sorted = allProjectsResult.data.sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setProjects(sorted);
         }
         
-        // Fetch user's own projects (repositories) for the sidebar
+        // Fetch user's own projects
         const userProjectsResult = await ApiService.getUserProjects();
         if (userProjectsResult.success) {
-          setUserProjects(userProjectsResult.data);
+          const sorted = userProjectsResult.data.sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setUserProjects(sorted);
         } else {
           setError("Failed to load your repositories");
         }
 
+        // Fetch friends' projects and saved projects
+        const friendsProjectsResult = await ApiService.getFriendsProjects();
+        if (friendsProjectsResult.success) {
+          const sorted = friendsProjectsResult.data.sort((a, b) => 
+            new Date(b.createdAt) - new Date(a.createdAt)
+          );
+          setFriendsProjects(sorted);
+        }
 
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -46,7 +61,9 @@ export default function HomePage() {
     fetchData();
   }, [user?.id]);
 
-  const feedData = feedType === "local" ? userProjects : projects;
+  const feedData = feedType === "local" ? userProjects : 
+                   feedType === "friends" ? friendsProjects : 
+                   projects;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-orange-900 text-white flex flex-col">
@@ -153,7 +170,17 @@ export default function HomePage() {
                       : "bg-gray-700 hover:bg-gray-600"
                   }`}
                 >
-                  All Projects
+                  Global
+                </button>
+                <button
+                  onClick={() => setFeedType("friends")}
+                  className={`px-3 py-1 rounded text-sm ${
+                    feedType === "friends"
+                      ? "bg-orange-500 hover:bg-orange-600"
+                      : "bg-gray-700 hover:bg-gray-600"
+                  }`}
+                >
+                  Friends
                 </button>
                 <button
                   onClick={() => setFeedType("local")}
@@ -190,7 +217,12 @@ export default function HomePage() {
                     onClick={() => navigate("/projectview", { state: { projectId: project._id } })}
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-orange-400">{project.name}</h3>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-orange-400">{project.name}</h3>
+                        {project.isSaved && (
+                          <span className="text-xs bg-blue-600 px-2 py-1 rounded ml-2">Saved</span>
+                        )}
+                      </div>
                       <span className="text-xs text-gray-400">
                         {project.type || "Project"}
                       </span>
@@ -228,7 +260,9 @@ export default function HomePage() {
             ) : (
               <div className="text-gray-400 text-center py-8">
                 <p className="mb-4">
-                  {feedType === "local" ? "You haven't created any projects yet." : "No projects available."}
+                  {feedType === "local" ? "You haven't created any projects yet." : 
+                   feedType === "friends" ? "Your friends haven't created or saved any projects yet." :
+                   "No projects available."}
                 </p>
                 {feedType === "local" && (
                   <button
@@ -236,6 +270,14 @@ export default function HomePage() {
                     className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-white"
                   >
                     Create Your First Project
+                  </button>
+                )}
+                {feedType === "friends" && (
+                  <button
+                    onClick={() => navigate("/friends")}
+                    className="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded text-white"
+                  >
+                    Find Friends
                   </button>
                 )}
               </div>
