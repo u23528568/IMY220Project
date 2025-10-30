@@ -383,8 +383,11 @@ class ApiService {
   }
 
   static async getUserFriends(userId) {
-    // For now, use the same endpoint as it returns the current user's friends
-    // This would need a backend route to get another user's friends list
+    // If a userId is provided, request that user's friends list from the backend.
+    // Fallback to the current user's friends list when no userId passed.
+    if (userId) {
+      return this.makeRequest(`/friends/list/${userId}`);
+    }
     return this.makeRequest('/friends/list');
   }
 

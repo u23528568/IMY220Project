@@ -306,6 +306,33 @@ router.get('/list', auth, async (req, res) => {
   }
 });
 
+// Get another user's friends list by userId (requires auth)
+router.get('/list/:userId', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId)
+      .populate('friends', 'username profile createdAt')
+      .select('friends');
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      data: user.friends,
+      message: "User's friends list retrieved successfully"
+    });
+  } catch (error) {
+    console.error('Error fetching other user\'s friends list:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch other user\'s friends list' 
+    });
+  }
+});
+
 // Remove friend
 router.delete('/:friendId', auth, async (req, res) => {
   try {

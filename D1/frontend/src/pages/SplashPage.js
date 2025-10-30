@@ -20,7 +20,7 @@ const SplashPage = () => {
       <section className="text-center mt-20">
         <h2 className="text-2xl font-display font-bold text-orange-400 tracking-tight mb-3">REPOFOX</h2>
         <p className="mt-2 text-gray-200 max-w-md mx-auto font-medium leading-relaxed">
-          Build together. Learn faster. Launch further. <br />
+          Use our version control system to manage your projects efficiently. <br />
           Showcase your work, exchange ideas, and discover new opportunities with developers worldwide.
         </p>
       </section>

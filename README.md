@@ -5,4 +5,6 @@
 Ronan Smart 
 student number: u23428568
 
-This is the Readme for my IMY Project
+## commands for running off docker
+
+docker-compose up --build
